@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="zh" id="main">
+<head>
+    <meta charset="UTF-8">
+    <title>首页</title>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    {#    <script>#}
+    {#    $(document).ready(function() {#}
+    {#        $('#refresh_time_btn').click(function() {#}
+    {#            $.get('{% url "current_time" %}', function(data) {#}
+    {#                $('#current_time').text('当前时间：' + data.time);#}
+    {#            });#}
+    {#        });#}
+    {#    });#}
+    {#</script>#}
+    <script>
+        function update_content() {
+            $.ajax({
+                url: "current_time",
+                type: "GET",
+                {#dataType: "html",#}
+                success: function (data) {
+                    let time = new Date(data['time']);
+                    let current = {
+                        year: time.getFullYear(),
+                        month: time.getMonth() + 1,
+                        day: time.getDate(),
+                        hour: time.getHours(),
+                        minute: time.getMinutes(),
+                        second: time.getSeconds()
+                    };
+                    let text = `现在时间是${current.year}年${current.month}月${current.day}日${current.hour}时${current.minute}分${current.second}秒`;
+                    {#console.log(text);#}
+                    {#console.log(current.second);#}
+                    $('#current_time').text(text)
+
+                }
+            });
+        }
+
+        $(document).ready(function () {
+            setInterval(update_content, 1000);
+        });
+    </script>
+</head>
+<h1 align="center"><a href="/">首页</a></h1>
+<body>
+<div align="center">
+
+    <h2>你好啊</h2>
+    <span id="current_time">
+    现在时间是{{ current.year }}年{{ current.month }}月{{ current.day }}日{{ current.hour }}时{{ current.minute }}分{{ current.second }}秒
+    </span>
+    <div>
+        <br> <a href="/admin">管理员界面</a>
+        <br> <a href="/polls">polls</a>
+        <br> <a href="/data_demo">dataDemo</a>
+    </div>
+</div>
+</body>
+</html>
