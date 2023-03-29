@@ -11,9 +11,7 @@ header {
     margin-top: 0;
     margin-bottom: 0;
 }
-.sidebar-sticky{
 
-}
 .this-dropdown{
     height: 16%;
 margin-bottom: 0;
@@ -21,10 +19,6 @@ margin-bottom: 0;
 .container-content {
     margin-left: 0;
     margin-right: 0;
-    /*{#padding-left:0 ;#}*/
-    /*{#padding-right: 0;#}*/
-    /*{#max-width: 100%;#}*/
-    /*{#max-height: 100%;#}*/
     height: 86%;
     width: 100%;
     flex-grow: 1;
@@ -36,15 +30,13 @@ margin-bottom: 0;
 }
 
 .this-sidebar {
-    margin-left: 0;
     display: flex;
-    border-right: 1px solid #bdbdbd;
     height: 100%;
     flex-grow: 1;
 }
 
 .col-right {
-    margin-right: 0;
+    margin: 0;
 }
 .this-footer{
     margin: 0;
