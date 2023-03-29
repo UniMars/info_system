@@ -1,12 +1,239 @@
+{% load static %}
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh">
 <head>
     <meta charset="UTF-8">
-    <title>Title</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>信息系统-子页面</title>
+    <!-- 引入Bootstrap CSS文件 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.11.3/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" type="text/css" href="{% static 'css/style.css' %}">
+    <!-- 引入Bootstrap JS文件和其依赖项 -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.min.js"></script>
+    <script src="https://cdn.datatables.net/1.11.3/js/jquery.dataTables.min.js"></script>
+    <script type="text/javascript">
+        $(document).ready(function () {
+            let table = $('#myTable').DataTable({
+                'debug': false,
+                'autoWidth': true,
+                "serverSide": true,
+                "searching": true,
+                'paging': true,
+                'lengthChange': false,
+                'info': false,
+                "deferRender": true,
+                "scrollY": "40vh",  //表格内容部分高度设置为窗口的一半
+                "scrollX": true,
+                "scroller": {"loadingIndicator": true},
+                columns: [
+                    {'title': "发布日期",'data': "发布日期"},
+                    {'title':"地区",'data': "地区"},
+                    {'title':"标题",'data': "标题"},
+                    {'title':"链接",'data': "链接"},
+                    {'title':"正文",'data': "正文"}
+                ],
+                'ajax': '/data_demo/updateTable'
+            });
+
+            // 用来获取更新数据的函数
+            function updateTable() {
+                $.ajax({
+                    url: '/data_demo/updateTable', // Update this URL to match your Django view's URL
+                    method: 'GET',
+                    success: function (data) {
+                        table.clear();
+                        table.rows.add(data);
+                        table.draw();
+                    },
+                    error: function (xhr, status, error) {
+                        console.error('Error fetching new data:', error);
+                    }
+                });
+            }
+
+            // Update table when the "Update Table" button is clicked
+            $('#updateTable').on('click', function () {
+                updateTable();
+            });
+            $('#importData').on('click', function () {
+            });
+        })
+    </script>
+
+
 </head>
 <body>
-数据展示<br>
-<a href="/">back to home</a>
-<button onclick="">导入数据</button>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" style="display: none;">
+    <symbol id="table" viewBox="0 0 16 16">
+        <path d="M0 2a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V2zm15 2h-4v3h4V4zm0 4h-4v3h4V8zm0 4h-4v3h3a1 1 0 0 0 1-1v-2zm-5 3v-3H6v3h4zm-5 0v-3H1v2a1 1 0 0 0 1 1h3zm-4-4h4V8H1v3zm0-4h4V4H1v3zm5-3v3h4V4H6zm4 4H6v3h4V8z"></path>
+    </symbol>
+    <symbol id="grid" viewBox="0 0 16 16">
+        <path d="M1 2.5A1.5 1.5 0 0 1 2.5 1h3A1.5 1.5 0 0 1 7 2.5v3A1.5 1.5 0 0 1 5.5 7h-3A1.5 1.5 0 0 1 1 5.5v-3zM2.5 2a.5.5 0 0 0-.5.5v3a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 .5-.5v-3a.5.5 0 0 0-.5-.5h-3zm6.5.5A1.5 1.5 0 0 1 10.5 1h3A1.5 1.5 0 0 1 15 2.5v3A1.5 1.5 0 0 1 13.5 7h-3A1.5 1.5 0 0 1 9 5.5v-3zm1.5-.5a.5.5 0 0 0-.5.5v3a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 .5-.5v-3a.5.5 0 0 0-.5-.5h-3zM1 10.5A1.5 1.5 0 0 1 2.5 9h3A1.5 1.5 0 0 1 7 10.5v3A1.5 1.5 0 0 1 5.5 15h-3A1.5 1.5 0 0 1 1 13.5v-3zm1.5-.5a.5.5 0 0 0-.5.5v3a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 .5-.5v-3a.5.5 0 0 0-.5-.5h-3zm6.5.5A1.5 1.5 0 0 1 10.5 9h3a1.5 1.5 0 0 1 1.5 1.5v3a1.5 1.5 0 0 1-1.5 1.5h-3A1.5 1.5 0 0 1 9 13.5v-3zm1.5-.5a.5.5 0 0 0-.5.5v3a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 .5-.5v-3a.5.5 0 0 0-.5-.5h-3z"></path>
+    </symbol>
+    <symbol id="speedometer2" viewBox="0 0 16 16">
+        <path d="M8 4a.5.5 0 0 1 .5.5V6a.5.5 0 0 1-1 0V4.5A.5.5 0 0 1 8 4zM3.732 5.732a.5.5 0 0 1 .707 0l.915.914a.5.5 0 1 1-.708.708l-.914-.915a.5.5 0 0 1 0-.707zM2 10a.5.5 0 0 1 .5-.5h1.586a.5.5 0 0 1 0 1H2.5A.5.5 0 0 1 2 10zm9.5 0a.5.5 0 0 1 .5-.5h1.5a.5.5 0 0 1 0 1H12a.5.5 0 0 1-.5-.5zm.754-4.246a.389.389 0 0 0-.527-.02L7.547 9.31a.91.91 0 1 0 1.302 1.258l3.434-4.297a.389.389 0 0 0-.029-.518z"></path>
+        <path fill-rule="evenodd"
+              d="M0 10a8 8 0 1 1 15.547 2.661c-.442 1.253-1.845 1.602-2.932 1.25C11.309 13.488 9.475 13 8 13c-1.474 0-3.31.488-4.615.911-1.087.352-2.49.003-2.932-1.25A7.988 7.988 0 0 1 0 10zm8-7a7 7 0 0 0-6.603 9.329c.203.575.923.876 1.68.63C4.397 12.533 6.358 12 8 12s3.604.532 4.923.96c.757.245 1.477-.056 1.68-.631A7 7 0 0 0 8 3z"></path>
+    </symbol>
+    <symbol id="collection" viewBox="0 0 16 16">
+        <path d="M2.5 3.5a.5.5 0 0 1 0-1h11a.5.5 0 0 1 0 1h-11zm2-2a.5.5 0 0 1 0-1h7a.5.5 0 0 1 0 1h-7zM0 13a1.5 1.5 0 0 0 1.5 1.5h13A1.5 1.5 0 0 0 16 13V6a1.5 1.5 0 0 0-1.5-1.5h-13A1.5 1.5 0 0 0 0 6v7zm1.5.5A.5.5 0 0 1 1 13V6a.5.5 0 0 1 .5-.5h13a.5.5 0 0 1 .5.5v7a.5.5 0 0 1-.5.5h-13z"></path>
+    </symbol>
+    <symbol id="calendar3" viewBox="0 0 16 16">
+        <path d="M14 0H2a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2zM1 3.857C1 3.384 1.448 3 2 3h12c.552 0 1 .384 1 .857v10.286c0 .473-.448.857-1 .857H2c-.552 0-1-.384-1-.857V3.857z"></path>
+        <path d="M6.5 7a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm3 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm3 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm-9 3a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm3 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm3 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm3 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm-9 3a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm3 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm3 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2z"></path>
+    </symbol>
+    <symbol id="chevron-right" viewBox="0 0 16 16">
+        <path fill-rule="evenodd"
+              d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z"></path>
+    </symbol>
+
+</svg>
+
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark" aria-labelledby="navbarNav">
+    <div class="container">
+        <a class="navbar-brand" href="/">信息系统</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+                aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav">
+                <li class="nav-item">
+                    <a class="nav-link " href="/">首页</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/admin" target="_blank">管理员界面</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link active" href="/data_demo">政府数据</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/polls">功能三</a>
+                </li>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<div class="container-content">
+
+    <div class="row this-row">
+        <div class="col-md-2 bg-light text-grey p-3 " style="border: solid 1px #c4c3c3">
+            <div class="d-flex flex-column this-sidebar">
+                <a href="/" class="d-flex align-items-center mb-3 mb-md-0 me-md-auto link-dark text-decoration-none">
+                    <svg class="bi me-2" width="40" height="32">
+
+                    </svg>
+                    <span class="fs-4">展示视图</span>
+                </a>
+                <hr>
+                <ul class="nav nav-pills flex-column mb-auto">
+                    <li>
+                        <a href="/data_demo" class="nav-link link-dark active">
+                            <svg class="bi me-2" width="16" height="16">
+                                <use xlink:href="#table"></use>
+                            </svg>
+                            表格
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" class="nav-link link-dark">
+                            <svg class="bi me-2" width="16" height="16">
+                                <use xlink:href="#speedometer2"></use>
+                            </svg>
+                            图表
+                        </a>
+                    </li>
+                </ul>
+                <hr>
+                <div class="dropdown">
+                    <a href="#" class="d-flex align-items-center link-dark text-decoration-none dropdown-toggle"
+                       id="dropdownUser2" data-bs-toggle="dropdown" aria-expanded="false">
+                        <img src="https://picx.zhimg.com/v2-3ff96ff65c3555eaeff41c6daa7eb88b_r.jpg" alt="" width="32"
+                             height="32" class="rounded-circle me-2">
+                        <strong>信息学院</strong>
+                    </a>
+                    <ul class="dropdown-menu text-small shadow" aria-labelledby="dropdownUser2">
+                        <li><a class="dropdown-item" href="#">Settings</a></li>
+                        <li>
+                            <hr class="dropdown-divider">
+                        </li>
+                        <li><a class="dropdown-item" href="#">Sign out</a></li>
+                    </ul>
+                </div>
+
+            </div>
+        </div>
+        <div class="col-md-10 p-3 col-right">
+            <button class="btn btn-primary mb-3" id="importData">导入数据</button>
+            {#            data-bs-toggle="modal" data-bs-target="#importModal"#}
+            <button class="btn btn-primary mb-3" id="updateTable">更新数据</button>
+            <br>
+            <h1 align="center">
+
+                数据汇总表预览
+            </h1>
+            <table class="display" id="myTable" style="white-space: nowrap">
+                {#                <caption>data demo</caption>#}
+                <thead>
+                <tr>
+                    <th scope="col">列1</th>
+                    <th scope="col">列2</th>
+                    <th scope="col">列3</th>
+                    <th scope="col">列4</th>
+                    <th scope="col">列5</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr>
+                    <td>数据1</td>
+                    <td>数据2</td>
+                    <td>数据3</td>
+                    <td>数据4</td>
+                    <td>数据5</td>
+                </tr>
+                <tr>
+                    <td>数据1</td>
+                    <td>数据2</td>
+                    <td>数据3</td>
+                    <td>数据4</td>
+                    <td>数据5</td>
+                </tr>
+                <tr>
+                    <td>数据1</td>
+                    <td>数据2</td>
+                    <td>数据3</td>
+                    <td>数据4</td>
+                    <td>数据5</td>
+                </tr>
+                <tr>
+                    <td>数据1</td>
+                    <td>数据2</td>
+                    <td>数据3</td>
+                    <td>数据4</td>
+                    <td>数据5</td>
+                </tr>
+                <tr>
+                    <td>数据1</td>
+                    <td>数据2</td>
+                    <td>数据3</td>
+                    <td>数据4</td>
+                    <td>数据5</td>
+                </tr>
+
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+
+<footer class="this-footer bg-secondary text-white text-center py-3 ">
+    <p>版权所有 &copy; 2023 信息学院</p>
+</footer>
+
 </body>
 </html>
