@@ -5,7 +5,8 @@ import re
 import time
 
 import pandas as pd
-from django.http import HttpResponse
+from django.core.paginator import Paginator
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render
 
 from .models import DataAggr
@@ -76,7 +77,7 @@ def data_import(response, filepath: str = r"D:\Programs\Code\python\data\res_Dat
                     if '发布日期' in item and item['发布日期']:
                         timestring = item['发布日期']
                         if time_pattern.fullmatch(timestring):
-                            pub_date=pd.to_datetime(timestring,format="%Y年%m月%d日")
+                            pub_date = pd.to_datetime(timestring, format="%Y年%m月%d日")
                         else:
                             pub_date = pd.to_datetime(timestring)
 
@@ -113,9 +114,11 @@ def data_import(response, filepath: str = r"D:\Programs\Code\python\data\res_Dat
                     # print(8)
 
                     if pub_date:
-                        data_model = DataAggr(area=area, types=types, link=link, title=title, content=content,                                              pub_date=pub_date, department=department, level=level, cate=cate)
+                        data_model = DataAggr(area=area, types=types, link=link, title=title, content=content,
+                                              pub_date=pub_date, department=department, level=level, cate=cate)
                     else:
-                        data_model = DataAggr(area=area, types=types, link=link, title=title, content=content, department=department, level=level, cate=cate)
+                        data_model = DataAggr(area=area, types=types, link=link, title=title, content=content,
+                                              department=department, level=level, cate=cate)
 
                     data_model.save()
                 print("输出结束\n")
@@ -125,3 +128,27 @@ def data_import(response, filepath: str = r"D:\Programs\Code\python\data\res_Dat
         print(response)
         print(e)
     return HttpResponse("数据汇总表写入中")
+
+
+def table_update(request):
+    try:
+        draw = int(request.GET.get('draw', 1))
+        start = int(request.GET.get('start', 0))
+        length = int(request.GET.get('length', 10))
+        search_value = request.GET.get('search[value]', '')
+        print()
+        queryset = DataAggr.objects.all().order_by('pub_date')
+        total_records = queryset.count()
+
+        paginator = Paginator(queryset, length)
+        page_number = (start // length) + 1
+        data = [{'发布日期': obj.pub_date, '地区': obj.area, '标题': obj.title, '链接': obj.link, '正文': obj.content}
+                for obj in paginator.get_page(page_number)]
+        response = {'draw': draw, 'recordsTotal': total_records, 'recordsFiltered': total_records, 'data': data}
+        return JsonResponse(response)
+    except Exception as e:
+        data = []
+        print("ERROR:\n")
+        print(request)
+        print(e)
+        return JsonResponse(data, safe=False)
