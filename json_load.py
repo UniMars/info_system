@@ -12,13 +12,15 @@ class LoadDatetime(json.JSONEncoder):
         if isinstance(obj, datetime):
             try:
                 return obj.strftime('%Y-%m-%d %H:%M:%S')
-            except:
+            except Exception as _:
+                print(_)
                 print(obj)
                 return None
         elif isinstance(obj, date):
             try:
                 return obj.strftime('%Y-%m-%d')
-            except:
+            except Exception as _:
+                print(_)
                 print(obj)
                 return None
         else:
@@ -28,12 +30,12 @@ class LoadDatetime(json.JSONEncoder):
 res = {}
 
 
-def convert_res(res):
+def convert_res(res_list: list):
     res_dict = []
-    for j in range(len(res[1:])):
+    for j in range(len(res_list[1:])):
         d = {}
-        for i in range(len(res[0])):
-            d[res[0][i]] = res[j + 1][i]
+        for i in range(len(res_list[0])):
+            d[res_list[0][i]] = res_list[j + 1][i]
         res_dict.append(d)
     return res_dict
 
@@ -47,7 +49,8 @@ for root, dirs, files in os.walk(r"D:\zl\数据汇总"):
                     print(dir_str)
                     reader = csv.reader(fp)
                     result = list(reader)
-            except:
+            except Exception as e:
+                print(e)
                 with open(dir_str, "r") as fp:
                     print(dir_str)
                     reader = csv.reader(fp)
