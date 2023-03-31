@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
-from datetime import datetime
+# from datetime import datetime
 import json
 import re
-import time
+# import time
 
 import pandas as pd
 from django.core.paginator import Paginator
@@ -25,93 +25,136 @@ def data_import(response, filepath: str = r"D:\Programs\Code\python\data\res_Dat
             print('文件打开成功\n')
             data_json = json.load(f)
             area_pattern = re.compile(r'[^\d-]+')
-            time_pattern = re.compile(r'\W*\d{4}年\d+月\d{1,2}日\W*')
-            for key, value in data_json.items():
-                print(key)
-                print()
-                match_res = area_pattern.search(key)
+            # time_pattern = re.compile(r'\W*\d{4}年\d+月\d{1,2}日\W*')
+
+            for name_key, value_list in data_json.items():
+                print(name_key + '\n')
+                # 匹配地区名
+                match_res = area_pattern.search(name_key)
                 if match_res and match_res.group()[-2:] == "文件":
                     area = match_res.group()
                 else:
                     print()
-                    raise ValueError("地区名称读取失败")
-                for item in value:
+                    area = ''
+                    # raise ValueError("地区名称读取失败")
 
-                    if 'type' in item:
-                        types = str(item['type'])
-                    elif '新闻类型' in item:
-                        types = str(item['新闻类型'])
-                    else:
-                        types = ''
-                        # raise ValueError("types读取失败")
-                    # print(1)
+                key_map = {
+                    'types': ['type', '新闻类型'],
+                    'link': ['link', '链接'],
+                    'title': ['title', '标题'],
+                    'content': ['正文内容'],
+                    'pub_date': ['发布日期'],
+                    'department': ['department', '来源'],
+                    'level': ['级别'],
+                    'cate': ['类别', '文件类型']
+                }
 
-                    if 'link' in item:
-                        link = str(item['link'])
-                    elif '链接' in item:
-                        link = str(item['链接'])
-                    else:
-                        link = ''
-                        # raise ValueError("link读取失败")
-                    # print(2)
-
-                    if 'title' in item:
-                        title = str(item['title'])
-                    elif '标题' in item:
-                        title = str(item['标题'])
-                    else:
-                        title = ''
-                        # raise ValueError("title读取失败")
-                    # print(3)
-
-                    if '正文内容' in item:
-                        content = str(item['正文内容'])
-                    # elif '链接' in item:
-                    #     link = item['链接']
-                    else:
-                        content = ''
-                        # raise ValueError("content读取失败")
-                    # print(4)
-
-                    # print(item['发布日期'])
-                    if '发布日期' in item and item['发布日期']:
-                        timestring = item['发布日期']
-                        if time_pattern.fullmatch(timestring):
-                            pub_date = pd.to_datetime(timestring, format="%Y年%m月%d日")
+                for item in value_list:
+                    result = {}
+                    for map_key, alternatives in key_map.items():
+                        for alt_key in alternatives:
+                            if alt_key in item:
+                                result[map_key] = str(item[alt_key]) if map_key not in ['pub_date'] else item[alt_key]
+                                break
                         else:
-                            pub_date = pd.to_datetime(timestring)
+                            result[map_key] = ''
 
+                    # 处理发布日期
+                    if result['pub_date']:
+                        timestring = result['pub_date']
+                        temp_date = pd.to_datetime(timestring, errors='coerce')
+                        temp_date = temp_date if temp_date is not pd.NaT else pd.to_datetime(timestring,
+                                                                                             format="%Y年%m月%d日",
+                                                                                             errors='coerce')
+                        temp_date = temp_date if temp_date is not pd.NaT else None
+                        result['pub_date'] = temp_date
                     else:
-                        pub_date = None
-                        # raise ValueError("日期读取失败")
-                    # print(5)
+                        result['pub_date'] = None
 
-                    if 'department' in item:
-                        department = item['department']
-                    elif '来源' in item:
-                        department = item['来源']
-                    else:
-                        department = ''
-                        # raise ValueError("department 读取失败")
-                    # print(6)
+                    types = result['types']
+                    link = result['link']
+                    title = result['title']
+                    content = result['content']
+                    pub_date = result['pub_date']
+                    department = result['department']
+                    level = result['level']
+                    cate = result['cate']
 
-                    if '级别' in item:
-                        level = item['级别']
-                        # elif '链接' in item:
-                        #     link = item['链接']
-                    else:
-                        level = ''
-                        # raise ValueError("level 读取失败")
-                    # print(7)
-
-                    if '类别' in item:
-                        cate = item['类别']
-                    elif '文件类型' in item:
-                        cate = item['文件类型']
-                    else:
-                        cate = ''
-                        # raise ValueError("cate 读取失败")
-                    # print(8)
+                    # if 'type' in item:
+                    #     types = str(item['type'])
+                    # elif '新闻类型' in item:
+                    #     types = str(item['新闻类型'])
+                    # else:
+                    #     types = ''
+                    #     # raise ValueError("types读取失败")
+                    # # print(1)
+                    #
+                    # if 'link' in item:
+                    #     link = str(item['link'])
+                    # elif '链接' in item:
+                    #     link = str(item['链接'])
+                    # else:
+                    #     link = ''
+                    #     # raise ValueError("link读取失败")
+                    # # print(2)
+                    #
+                    # if 'title' in item:
+                    #     title = str(item['title'])
+                    # elif '标题' in item:
+                    #     title = str(item['标题'])
+                    # else:
+                    #     title = ''
+                    #     # raise ValueError("title读取失败")
+                    # # print(3)
+                    #
+                    # if '正文内容' in item:
+                    #     content = str(item['正文内容'])
+                    # # elif '链接' in item:
+                    # #     link = item['链接']
+                    # else:
+                    #     content = ''
+                    #     # raise ValueError("content读取失败")
+                    # # print(4)
+                    #
+                    # # print(item['发布日期'])
+                    # if '发布日期' in item and item['发布日期']:
+                    #     timestring = item['发布日期']
+                    #     if time_pattern.fullmatch(timestring):
+                    #         pub_date = pd.to_datetime(timestring, format="%Y年%m月%d日")
+                    #     else:
+                    #         pub_date = pd.to_datetime(timestring)
+                    #
+                    # else:
+                    #     pub_date = None
+                    #     # raise ValueError("日期读取失败")
+                    # # print(5)
+                    #
+                    # if 'department' in item:
+                    #     department = item['department']
+                    # elif '来源' in item:
+                    #     department = item['来源']
+                    # else:
+                    #     department = ''
+                    #     # raise ValueError("department 读取失败")
+                    # # print(6)
+                    #
+                    # if '级别' in item:
+                    #     level = item['级别']
+                    #     # elif '链接' in item:
+                    #     #     link = item['链接']
+                    # else:
+                    #     level = ''
+                    #     # raise ValueError("level 读取失败")
+                    # # print(7)
+                    #
+                    # if '类别' in item:
+                    #     cate = item['类别']
+                    # elif '文件类型' in item:
+                    #     cate = item['文件类型']
+                    # else:
+                    #     cate = ''
+                    #     # raise ValueError("cate 读取失败")
+                    # # print(8)
 
                     if pub_date:
                         data_model = DataAggr(area=area, types=types, link=link, title=title, content=content,
@@ -125,8 +168,8 @@ def data_import(response, filepath: str = r"D:\Programs\Code\python\data\res_Dat
                 return HttpResponse("写入完成")
     except Exception as e:
         print("ERROR:\n")
-        print(response)
         print(e)
+        print(response)
     return HttpResponse("数据汇总表写入中")
 
 
@@ -135,9 +178,9 @@ def table_update(request):
         draw = int(request.GET.get('draw', 1))
         start = int(request.GET.get('start', 0))
         length = int(request.GET.get('length', 10))
-        search_value = request.GET.get('search[value]', '')
+        # search_value = request.GET.get('search[value]', '')
         print()
-        queryset = DataAggr.objects.all().order_by('pub_date')
+        queryset = DataAggr.objects.all().order_by('-pub_date')
         total_records = queryset.count()
 
         paginator = Paginator(queryset, length)
