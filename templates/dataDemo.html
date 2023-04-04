@@ -133,6 +133,7 @@
                     <th scope="col">列3</th>
                     <th scope="col">列4</th>
                     <th scope="col">列5</th>
+                    <th scope="col">列6</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -190,8 +191,8 @@
     <script type="text/javascript">
         $(document).ready(function () {
             let table = $('#myTable').DataTable({
-                'debug': false,
-                'autoWidth': true,
+                'debug': true,
+                'autoWidth': false,
                 "serverSide": true,
                 "searching": false,
                 'paging': true,
@@ -200,10 +201,11 @@
                 "deferRender": true,
                 "scrollY": "40vh",  //表格内容部分高度设置为窗口的一半
                 "scrollX": true,
-                {#"scroller": {"loadingIndicator": true},#}
+                "scroller": {"loadingIndicator": true},
                 columns: [
                     {'title': "发布日期",'data': "发布日期"},
                     {'title':"地区",'data': "地区"},
+                    {'title':"类型",'data': "类型"},
                     {'title':"标题",'data': "标题"},
                     {'title':"链接",'data': "链接"},
                     {'title':"正文",'data': "正文"}
@@ -227,12 +229,25 @@
                     }
                 });
             }
+            function importData() {
+                $.ajax({
+                    url: '/datas/import', // Update this URL to match your Django view's URL
+                    method: 'GET',
+                    success: function () {
+                        updateTable()
+                    },
+                    error: function (xhr, status, error) {
+                        console.error('Error fetching new data:', error);
+                    }
+                });
+            }
 
             // Update table when the "Update Table" button is clicked
             $('#updateTable').on('click', function () {
                 updateTable();
             });
             $('#importData').on('click', function () {
+                importData()
             });
         })
     </script>
