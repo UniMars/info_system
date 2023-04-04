@@ -6,4 +6,4 @@ from django.shortcuts import render
 
 def index(response):
     # return
-    return render(response, template_name='polls.html')
+    return render(response, template_name='report.html')

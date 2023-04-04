@@ -1,6 +1,6 @@
 from django.contrib import admin
-from .models import DataAggr
+from .models import GovAggr
 
 # Register your models here.
 
-admin.site.register(DataAggr)
+admin.site.register(GovAggr)
