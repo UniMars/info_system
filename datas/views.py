@@ -18,7 +18,7 @@ def index(response):
     return render(response, 'dataDemo.html')
 
 
-def data_import(response, filepath: str = r"D:\Programs\Code\python\data\res_DataGather.json"):
+def data_import(response, filepath: str = r"D:\Programs\Code\python\projects\info_system\DATA\res_DataGather.json"):
     print("导入数据中\n")
     try:
         with open(filepath, 'r', encoding='utf-8') as f:
@@ -98,8 +98,8 @@ def data_import(response, filepath: str = r"D:\Programs\Code\python\data\res_Dat
                                              source=source, level=level)
 
                     data_model.save()
-                print("输出结束\n")
-                return HttpResponse("写入完成")
+            print("输出结束\n")
+            return HttpResponse("写入完成")
     except Exception as e:
         print("ERROR:\n")
         print(e)
@@ -119,7 +119,8 @@ def table_update(request):
 
         paginator = Paginator(queryset, length)
         page_number = (start // length) + 1
-        data = [{'发布日期': obj.pub_date, '地区': obj.area, '标题': obj.title, '链接': obj.link, '正文': obj.content}
+        data = [{'发布日期': obj.pub_date, '地区': obj.area, '类型': obj.types, '标题': obj.title, '链接': obj.link,
+                 '正文': obj.content}
                 for obj in paginator.get_page(page_number)]
         response = {'draw': draw, 'recordsTotal': total_records, 'recordsFiltered': total_records, 'data': data}
         return JsonResponse(response)
