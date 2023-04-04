@@ -9,59 +9,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.11.3/css/jquery.dataTables.min.css">
     <link rel="stylesheet" type="text/css" href="{% static 'css/style.css' %}">
-    <!-- 引入Bootstrap JS文件和其依赖项 -->
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.min.js"></script>
-    <script src="https://cdn.datatables.net/1.11.3/js/jquery.dataTables.min.js"></script>
-    <script type="text/javascript">
-        $(document).ready(function () {
-            let table = $('#myTable').DataTable({
-                'debug': false,
-                'autoWidth': true,
-                "serverSide": true,
-                "searching": false,
-                'paging': true,
-                'lengthChange': false,
-                'info': false,
-                "deferRender": true,
-                "scrollY": "40vh",  //表格内容部分高度设置为窗口的一半
-                "scrollX": true,
-                "scroller": {"loadingIndicator": true},
-                columns: [
-                    {'title': "发布日期",'data': "发布日期"},
-                    {'title':"地区",'data': "地区"},
-                    {'title':"标题",'data': "标题"},
-                    {'title':"链接",'data': "链接"},
-                    {'title':"正文",'data': "正文"}
-                ],
-                'ajax': '/data_demo/updateTable'
-            });
 
-            // 用来获取更新数据的函数
-            function updateTable() {
-                $.ajax({
-                    url: '/data_demo/updateTable', // Update this URL to match your Django view's URL
-                    method: 'GET',
-                    success: function (data) {
-                        table.clear();
-                        table.rows.add(data);
-                        table.draw();
-                    },
-                    error: function (xhr, status, error) {
-                        console.error('Error fetching new data:', error);
-                    }
-                });
-            }
-
-            // Update table when the "Update Table" button is clicked
-            $('#updateTable').on('click', function () {
-                updateTable();
-            });
-            $('#importData').on('click', function () {
-            });
-        })
-    </script>
 
 
 </head>
@@ -108,10 +56,10 @@
                     <a class="nav-link" href="/admin" target="_blank">管理员界面</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link active" href="/data_demo">政府数据</a>
+                    <a class="nav-link active" href="/datas">政府数据</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="/polls">功能三</a>
+                    <a class="nav-link" href="/report">报告展示</a>
                 </li>
             </ul>
         </div>
@@ -123,7 +71,7 @@
     <div class="row this-row">
         <div class="col-md-2 bg-light text-grey p-3 " style="border: solid 1px #c4c3c3">
             <div class="d-flex flex-column this-sidebar">
-                <a href="/" class="d-flex align-items-center mb-3 mb-md-0 me-md-auto link-dark text-decoration-none">
+                <a href="#" class="d-flex align-items-center mb-3 mb-md-0 me-md-auto link-dark text-decoration-none">
                     <svg class="bi me-2" width="40" height="32">
 
                     </svg>
@@ -132,7 +80,7 @@
                 <hr>
                 <ul class="nav nav-pills flex-column mb-auto">
                     <li>
-                        <a href="/data_demo" class="nav-link link-dark active">
+                        <a href="/datas" class="nav-link link-dark active">
                             <svg class="bi me-2" width="16" height="16">
                                 <use xlink:href="#table"></use>
                             </svg>
@@ -234,6 +182,59 @@
 <footer class="this-footer bg-secondary text-white text-center py-3 ">
     <p>版权所有 &copy; 2023 信息学院</p>
 </footer>
+    <!-- 引入Bootstrap JS文件和其依赖项 -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.min.js"></script>
+    <script src="https://cdn.datatables.net/1.11.3/js/jquery.dataTables.min.js"></script>
+    <script type="text/javascript">
+        $(document).ready(function () {
+            let table = $('#myTable').DataTable({
+                'debug': false,
+                'autoWidth': true,
+                "serverSide": true,
+                "searching": false,
+                'paging': true,
+                'lengthChange': false,
+                'info': false,
+                "deferRender": true,
+                "scrollY": "40vh",  //表格内容部分高度设置为窗口的一半
+                "scrollX": true,
+                {#"scroller": {"loadingIndicator": true},#}
+                columns: [
+                    {'title': "发布日期",'data': "发布日期"},
+                    {'title':"地区",'data': "地区"},
+                    {'title':"标题",'data': "标题"},
+                    {'title':"链接",'data': "链接"},
+                    {'title':"正文",'data': "正文"}
+                ],
+                'ajax': '/datas/updateTable'
+            });
 
+            // 用来获取更新数据的函数
+            function updateTable() {
+                $.ajax({
+                    url: '/datas/updateTable', // Update this URL to match your Django view's URL
+                    method: 'GET',
+                    success: function (data) {
+                        console.log(data)
+                        table.clear();
+                        table.rows.add(data);
+                        table.draw();
+                    },
+                    error: function (xhr, status, error) {
+                        console.error('Error fetching new data:', error);
+                    }
+                });
+            }
+
+            // Update table when the "Update Table" button is clicked
+            $('#updateTable').on('click', function () {
+                updateTable();
+            });
+            $('#importData').on('click', function () {
+            });
+        })
+    </script>
 </body>
 </html>
