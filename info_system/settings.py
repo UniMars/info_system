@@ -46,8 +46,8 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "polls.apps.PollsConfig",
-    "data_demo.apps.DataDemoConfig",
+    "report.apps.ReportConfig",
+    "datas.apps.DataDemoConfig",
 ]
 
 MIDDLEWARE = [
@@ -113,8 +113,6 @@ TIME_ZONE = "Asia/Shanghai"
 USE_I18N = True
 
 USE_TZ = False
-
-
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.1/ref/settings/#default-auto-field
