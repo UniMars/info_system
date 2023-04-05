@@ -6,11 +6,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>信息系统-子页面</title>
     <!-- 引入Bootstrap CSS文件 -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css">
     <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.11.3/css/jquery.dataTables.min.css">
     <link rel="stylesheet" type="text/css" href="{% static 'css/style.css' %}">
-
-
+    <!-- 引入Bootstrap JS文件和其依赖项 -->
+    <script src="https://cdn.bootcdn.net/ajax/libs/echarts/5.3.0/echarts.min.js"></script>
+    <script src="{% static 'JavaScript/echarts-wordcloud.min.js' %}"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.min.js"></script>
+    <script src="https://cdn.datatables.net/1.11.3/js/jquery.dataTables.min.js"></script>
 
 </head>
 <body>
@@ -69,8 +74,10 @@
 <div class="container-content">
 
     <div class="row this-row">
+        {#        侧边栏#}
         <div class="col-md-2 bg-light text-grey p-3 " style="border: solid 1px #c4c3c3">
-            <div class="d-flex flex-column this-sidebar">
+            <div class="d-flex nav flex-column nav-pills this-sidebar" id="v-pills-tab" role="tablist"
+                 aria-orientation="vertical">
                 <a href="#" class="d-flex align-items-center mb-3 mb-md-0 me-md-auto link-dark text-decoration-none">
                     <svg class="bi me-2" width="40" height="32">
 
@@ -80,7 +87,8 @@
                 <hr>
                 <ul class="nav nav-pills flex-column mb-auto">
                     <li>
-                        <a href="/datas" class="nav-link link-dark active">
+                        <a class="nav-link link-dark active" id="v-pills-form-tab" data-bs-toggle="pill"
+                           href="#v-pills-form" role="tab" aria-controls="v-pills-form" aria-selected="true">
                             <svg class="bi me-2" width="16" height="16">
                                 <use xlink:href="#table"></use>
                             </svg>
@@ -88,7 +96,8 @@
                         </a>
                     </li>
                     <li>
-                        <a href="#" class="nav-link link-dark">
+                        <a class="nav-link link-dark" id="v-pills-graph-tab" data-bs-toggle="pill"
+                           href="#v-pills-graph" role="tab" aria-controls="v-pills-graph" aria-selected="false">
                             <svg class="bi me-2" width="16" height="16">
                                 <use xlink:href="#speedometer2"></use>
                             </svg>
@@ -116,65 +125,32 @@
             </div>
         </div>
         <div class="col-md-10 p-3 col-right">
-            <button class="btn btn-primary mb-3" id="importData">导入数据</button>
-            {#            data-bs-toggle="modal" data-bs-target="#importModal"#}
-            <button class="btn btn-primary mb-3" id="updateTable">更新数据</button>
-            <br>
-            <h1 align="center">
+            <div class="tab-content" id="v-pills-tabContent" style="width: 100% ;height: 100%">
+                <div class="tab-pane fade show active" id="v-pills-form" role="tabpanel"
+                     aria-labelledby="v-pills-form-tab" style="width: 100% ;height: 100%">
 
-                数据汇总表预览
-            </h1>
-            <table class="display" id="myTable" style="white-space: nowrap">
-                {#                <caption>data demo</caption>#}
-                <thead>
-                <tr>
-                    <th scope="col">列1</th>
-                    <th scope="col">列2</th>
-                    <th scope="col">列3</th>
-                    <th scope="col">列4</th>
-                    <th scope="col">列5</th>
-                    <th scope="col">列6</th>
-                </tr>
-                </thead>
-                <tbody>
-                <tr>
-                    <td>数据1</td>
-                    <td>数据2</td>
-                    <td>数据3</td>
-                    <td>数据4</td>
-                    <td>数据5</td>
-                </tr>
-                <tr>
-                    <td>数据1</td>
-                    <td>数据2</td>
-                    <td>数据3</td>
-                    <td>数据4</td>
-                    <td>数据5</td>
-                </tr>
-                <tr>
-                    <td>数据1</td>
-                    <td>数据2</td>
-                    <td>数据3</td>
-                    <td>数据4</td>
-                    <td>数据5</td>
-                </tr>
-                <tr>
-                    <td>数据1</td>
-                    <td>数据2</td>
-                    <td>数据3</td>
-                    <td>数据4</td>
-                    <td>数据5</td>
-                </tr>
-                <tr>
-                    <td>数据1</td>
-                    <td>数据2</td>
-                    <td>数据3</td>
-                    <td>数据4</td>
-                    <td>数据5</td>
-                </tr>
+                    <button class="btn btn-primary mb-3" id="importData">导入数据</button>
+                    {#            data-bs-toggle="modal" data-bs-target="#importModal"#}
+                    <button class="btn btn-primary mb-3" id="updateTable">更新数据</button>
+                    <button class="btn btn-primary mb-3" id="wordSplit">分词统计</button>
+                    <br>
+                    <h1 align="center">
 
-                </tbody>
-            </table>
+                        数据汇总表预览
+                    </h1>
+                    <table class="display" id="myTable" style="white-space: nowrap">
+                        {#                <caption>data demo</caption>#}
+                        <thead>
+                        </thead>
+                        <tbody>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="tab-pane fade" id="v-pills-graph" role="tabpanel" aria-labelledby="v-pills-graph-tab"
+                     style="width: 100% ;height: 100%">
+                    <div id="wordcloud" style="width: 100%; height: 100%;"></div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -183,73 +159,167 @@
 <footer class="this-footer bg-secondary text-white text-center py-3 ">
     <p>版权所有 &copy; 2023 信息学院</p>
 </footer>
-    <!-- 引入Bootstrap JS文件和其依赖项 -->
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.min.js"></script>
-    <script src="https://cdn.datatables.net/1.11.3/js/jquery.dataTables.min.js"></script>
-    <script type="text/javascript">
-        $(document).ready(function () {
-            let table = $('#myTable').DataTable({
-                'debug': true,
-                'autoWidth': false,
-                "serverSide": true,
-                "searching": false,
-                'paging': true,
-                'lengthChange': false,
-                'info': false,
-                "deferRender": true,
-                "scrollY": "40vh",  //表格内容部分高度设置为窗口的一半
-                "scrollX": true,
-                "scroller": {"loadingIndicator": true},
-                columns: [
-                    {'title': "发布日期",'data': "发布日期"},
-                    {'title':"地区",'data': "地区"},
-                    {'title':"类型",'data': "类型"},
-                    {'title':"标题",'data': "标题"},
-                    {'title':"链接",'data': "链接"},
-                    {'title':"正文",'data': "正文"}
-                ],
-                'ajax': '/datas/updateTable'
+
+<script type="text/javascript">
+    $(document).ready(function () {
+        var cachedData = localStorage.getItem('tableData');
+        var initialData = cachedData ? JSON.parse(cachedData) : [];
+        let tableConfig = {
+            'debug': true,
+            'autoWidth': false,
+            'serverSide': true,
+            'searching': false,
+            'paging': true,
+            'lengthChange': false,
+            'info': false,
+            'deferRender': true,
+            'scrollY': "40vh",
+            'scrollX': true,
+            'scroller': {'loadingIndicator': true},
+            columns: [
+                {'title': "发布日期", 'data': "发布日期"},
+                {'title': "地区", 'data': "地区"},
+                {'title': "类型", 'data': "类型"},
+                {'title': "标题", 'data': "标题"},
+                {'title': "链接", 'data': "链接"},
+                {'title': "正文", 'data': "正文"}
+            ],
+        };
+        {#console.log('00000')#}
+{#initialData.length ===#}
+        if ( 1) {
+            tableConfig.ajax = '/datas/updateTable'
+        } else {
+            {#console.log(initialData.data);#}
+            tableConfig.serverSide=false;
+            {#tableConfig.draw=initialData.draw;#}
+            {#tableConfig.recordsTotal=initialData.recordsTotal;#}
+            {#    tableConfig.recordsFiltered=initialData.recordsFiltered;#}
+            tableConfig['data'] = initialData.data;
+        }
+        {#console.log('config:', tableConfig);#}
+
+        let table = $('#myTable').DataTable(tableConfig);
+        {#console.log('271')#}
+        const updateTable = () => {
+            $.ajax({
+                url: '/datas/updateTable',
+                method: 'GET',
+                success: function (data) {
+                    {#localStorage.setItem('tableData', JSON.stringify(data));#}
+                    {#console.log(data);#}
+                    {#console.log(table.rows);#}
+                    table.clear();
+                    table.rows.add(data);
+                    table.draw();
+                },
+                error: function (xhr, status, error) {
+                    console.error('Error fetching new data:', error);
+                }
             });
+        };
+        const importData = () => {
+            $.ajax({
+                url: '/datas/import',
+                method: 'GET',
+                success: function () {
+                    localStorage.removeItem('tableData');
+                    updateTable();
+                },
+                error: function (xhr, status, error) {
+                    console.error('Error fetching new data:', error);
+                }
+            });
+        };
 
-            // 用来获取更新数据的函数
-            function updateTable() {
-                $.ajax({
-                    url: '/datas/updateTable', // Update this URL to match your Django view's URL
-                    method: 'GET',
-                    success: function (data) {
-                        console.log(data)
-                        table.clear();
-                        table.rows.add(data);
-                        table.draw();
-                    },
-                    error: function (xhr, status, error) {
-                        console.error('Error fetching new data:', error);
-                    }
-                });
-            }
-            function importData() {
-                $.ajax({
-                    url: '/datas/import', // Update this URL to match your Django view's URL
-                    method: 'GET',
-                    success: function () {
-                        updateTable()
-                    },
-                    error: function (xhr, status, error) {
-                        console.error('Error fetching new data:', error);
-                    }
-                });
-            }
+        const wordSplit = () => {
+            $.ajax({
+                method: 'GET',
+                url: '/datas/wordSplit',
+                success: function () {
+                },
+                error: function (xhr, status, error) {
+                    console.error('Error:', error);
+                }
+            });
+        };
 
-            // Update table when the "Update Table" button is clicked
-            $('#updateTable').on('click', function () {
+        $('#updateTable').on('click', function () {
                 updateTable();
             });
-            $('#importData').on('click', function () {
-                importData()
-            });
-        })
-    </script>
+        $('#importData').on('click', importData);
+        $('#wordSplit').on('click', wordSplit);
+
+        const wordcloudDiv = document.getElementById('wordcloud');
+        const chart = echarts.init(wordcloudDiv);
+
+        const wordCloudOptions = {
+            series: [{
+                type: 'wordCloud',
+                shape: 'circle',
+                gridSize: 20,
+                sizeRange: [12, 50],
+                rotationRange: [-90, 90],
+                left: 'center',
+                top: 'center',
+                width: '70%',
+                height: '80%',
+                rotationStep: 45,
+                drawOutOfBound: false,
+                shrinkToFit: false,
+                layoutAnimation: true,
+                textStyle: {
+                    fontFamily: 'sans-serif',
+                    fontWeight: 'bold',
+                    color: function () {
+                        return 'rgb(' + [
+                            Math.round(Math.random() * 160),
+                            Math.round(Math.random() * 160),
+                            Math.round(Math.random() * 160)
+                        ].join(',') + ')';
+                    }
+                },
+                emphasis: {
+                    textStyle: {
+                        textShadowBlur: 10,
+                        textShadowColor: '#333'
+                    }
+                },
+                data: []
+            }]
+        };
+
+        const updateWordCloud = (data = []) => {
+            if (data.length) {
+                wordCloudOptions.series[0].data = data;
+            }
+            chart.setOption(wordCloudOptions);
+            chart.resize();
+        };
+
+        const fetchWordFrequencyData = () => {
+            fetch('/datas/wordCloud', {method: 'GET'})
+                .then(response => response.json())
+                .then(data => {
+                    updateWordCloud(data.word_freq);
+                })
+                .catch(error => {
+                    console.error('Error fetching word frequency data:', error);
+                });
+        };
+
+        fetchWordFrequencyData();
+
+        window.addEventListener('resize', function () {
+            chart.resize();
+        });
+
+        $('a[data-bs-toggle="pill"]').on('shown.bs.tab', function (e) {
+            if ($(e.target).attr('id') === 'v-pills-graph-tab') {
+                updateWordCloud();
+            }
+        });
+    });
+</script>
 </body>
 </html>
