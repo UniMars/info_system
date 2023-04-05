@@ -84,11 +84,21 @@ WSGI_APPLICATION = "info_system.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/4.1/ref/settings/#databases
 
+
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "data/db.sqlite3",
-    }
+        # "ENGINE": "django.db.backends.sqlite3",
+        # "NAME": BASE_DIR / "DATA/db.sqlite3",
+        "ENGINE": "django.db.backends.mysql",
+        "NAME": 'info_sys',
+        "USER": 'root',
+        "PASSWORD": 'adminsql',
+        "HOST": '10.4.32.140',
+        "PORT": '3306',
+        'OPTIONS': {
+            'charset': 'utf8mb4',
+        },
+    },
 }
 
 # Password validation
