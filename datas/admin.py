@@ -1,6 +1,7 @@
 from django.contrib import admin
-from .models import GovAggr
+from .models import GovDoc, KeyWord, GovDocWordFreq
 
 # Register your models here.
 
-admin.site.register(GovAggr)
+admin.site.register(GovDoc)
+admin.site.register(GovDocWordFreq)
