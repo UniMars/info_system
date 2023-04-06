@@ -10,10 +10,9 @@ https://docs.djangoproject.com/en/4.1/topics/settings/
 https://docs.djangoproject.com/en/4.1/ref/settings/
 """
 import os
+import secrets
 from pathlib import Path
 from dotenv import load_dotenv
-
-load_dotenv()
 
 # 像这样在项目内部构建路径：BASE_DIR / '子目录'
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -29,11 +28,11 @@ STATICFILES_DIRS = [
 
 STATIC_URL = "/static/"
 
-
-
 # 安全警告：在生产环境中要保护好使用的密钥！
+load_dotenv(dotenv_path=BASE_DIR / '.env')
 SECRET_KEY = os.environ.get('SECRET_KEY')
-
+if not SECRET_KEY:
+    SECRET_KEY = secrets.token_hex(64)
 
 # 安全警告：不要在生产环境中开启调试模式！
 DEBUG = False
@@ -128,7 +127,6 @@ USE_TZ = False
 # https://docs.djangoproject.com/en/4.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
-
 
 # 日志配置
 if not os.path.exists(BASE_DIR / 'logs'):
