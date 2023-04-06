@@ -17,7 +17,7 @@ from django.shortcuts import render
 from django.views.decorators.cache import cache_page
 
 from utils.json_load import json_load
-from .models import GovAggr, GovAggrWordFreq
+from .models import GovDoc, GovDocWordFreq, GovDocWordFreqAggr
 
 logger = logging.getLogger('django')
 
@@ -97,23 +97,23 @@ def data_import(response, filepath: str = r"D:\Programs\Code\python\projects\inf
                 pub_date = result['pub_date']
                 source = result['source'][:50]
                 level = result['level']
-                if GovAggr.objects.filter(area=area, title=title).exists():
+                if GovDoc.objects.filter(area=area, title=title).exists():
                     continue
-                if pub_date and not GovAggr.objects.filter(area=area, title=title, pub_date=pub_date).exists():
+                if pub_date and not GovDoc.objects.filter(area=area, title=title, pub_date=pub_date).exists():
                     update_fields = {
                         'area': area, 'types': types, 'link': link,
                         'title': title, 'content': content,
                         'pub_date': pub_date, 'source': source,
                         'level': level
                     }
-                    data_model = GovAggr(**update_fields)
+                    data_model = GovDoc(**update_fields)
                 else:
                     update_fields = {
                         'area': area, 'types': types, 'link': link,
                         'title': title, 'content': content, 'source': source,
                         'level': level
                     }
-                    data_model = GovAggr(**update_fields)
+                    data_model = GovDoc(**update_fields)
                 data_model.save()
         logger.info("政府汇总数据读取写入完成")
         return HttpResponse("写入完成")
@@ -129,7 +129,7 @@ def table_update(request):
         start = int(request.GET.get('start', 0))
         length = int(request.GET.get('length', 10))
         # search_value = request.GET.get('search[value]', '')
-        queryset = GovAggr.objects.all().order_by('-pub_date')
+        queryset = GovDoc.objects.all().order_by('-pub_date')
         total_records = queryset.count()
 
         paginator = Paginator(queryset, length)
@@ -147,7 +147,7 @@ def table_update(request):
 
 def word_split(request):
     logger.info("start word splitting")
-    articles = GovAggr.objects.filter(is_split=False)
+    articles = GovDoc.objects.filter(is_split=False)
     # 加载停用词
     stopwords = []
     stopwords_file_path = os.path.join(settings.STATIC_ROOT, 'stopwords.txt')
@@ -204,9 +204,8 @@ def word_split_multiprocess_task(model_list, stopwords):
         for article in model_list:
             with transaction.atomic():
                 # 分词并词频统计
-                seg_list = jieba.lcut(article.content)
                 word_freq = {}
-                for word in seg_list:
+                for word in jieba.cut(article.content):
                     # if len(word) == 1:
                     #     continue
                     # 去除停用词和数字,标点符号
@@ -216,15 +215,22 @@ def word_split_multiprocess_task(model_list, stopwords):
                 word_model_list = []
                 unique_word_models = set()
                 for word, freq in word_freq.items():
-                    if (word, article.id) in unique_word_models or GovAggrWordFreq.objects.filter(word=word,
-                                                                                                  record=article).exists():
+                    if (word, article.id) in unique_word_models or GovDocWordFreq.objects.filter(word=word,
+                                                                                                 record=article).exists():
                         continue
                     else:
-                        word_freq_model = GovAggrWordFreq(word=word, freq=freq, record=article)
+                        word_freq_model = GovDocWordFreq(word=word, freq=freq, record=article)
+                        area = GovDoc.objects.get(id=article.id).area
+                        word_total_model = GovDocWordFreqAggr.objects.get_or_create(word=word, area='TOTAL')[0]
+                        word_area_model = GovDocWordFreqAggr.objects.get_or_create(word=word, area=area)[0]
+                        word_total_model.freq += freq
+                        word_area_model.freq += freq
+                        word_total_model.save()
+                        word_area_model.save()
                         word_model_list.append(word_freq_model)
                         unique_word_models.add((word, article.id))
                 if len(word_model_list):
-                    GovAggrWordFreq.objects.bulk_create(word_model_list)
+                    GovDocWordFreq.objects.bulk_create(word_model_list)
                 article.is_split = True
                 article.save()
                 logger.debug(f"article {article.id} saved")
@@ -233,9 +239,9 @@ def word_split_multiprocess_task(model_list, stopwords):
 @cache_page(7200)
 def wordcloud(request):
     logger.info('wordcloud start')
-    aggregated_words = GovAggrWordFreq.objects.values('word').annotate(total_freq=Sum('freq')).order_by('-total_freq')[:1000]
-    # TODO
-    print(len(aggregated_words))
+    # aggregated_words = GovDocWordFreq.objects.values('word').annotate(total_freq=Sum('freq')).order_by('-total_freq')[:1000]
+    aggregated_words = GovDocWordFreqAggr.objects.filter(area='TOTAL').order_by('-freq')[:1000]
+    # print(len(aggregated_words))
     word_freq = [{'name': word['word'], 'value': word['total_freq']} for word in aggregated_words]
     # word_freq = word_freq[:1000]
     context = {'word_freq': word_freq}
