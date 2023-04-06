@@ -74,7 +74,7 @@
 <div class="container-content">
 
     <div class="row this-row">
-        {#        侧边栏#}
+<!--                侧边栏-->
         <div class="col-md-2 bg-light text-grey p-3 " style="border: solid 1px #c4c3c3">
             <div class="d-flex nav flex-column nav-pills this-sidebar" id="v-pills-tab" role="tablist"
                  aria-orientation="vertical">
@@ -130,7 +130,7 @@
                      aria-labelledby="v-pills-form-tab" style="width: 100% ;height: 100%">
 
                     <button class="btn btn-primary mb-3" id="importData">导入数据</button>
-                    {#            data-bs-toggle="modal" data-bs-target="#importModal"#}
+<!--                                data-bs-toggle="modal" data-bs-target="#importModal"-->
                     <button class="btn btn-primary mb-3" id="updateTable">更新数据</button>
                     <button class="btn btn-primary mb-3" id="wordSplit">分词统计</button>
                     <br>
@@ -139,7 +139,7 @@
                         数据汇总表预览
                     </h1>
                     <table class="display" id="myTable" style="white-space: nowrap">
-                        {#                <caption>data demo</caption>#}
+<!--                                        <caption>data demo</caption>-->
                         <thead>
                         </thead>
                         <tbody>
@@ -185,30 +185,30 @@
                 {'title': "正文", 'data': "正文"}
             ],
         };
-        {#console.log('00000')#}
-{#initialData.length ===#}
+        // console.log('00000')
+// initialData.length ===
         if ( 1) {
             tableConfig.ajax = '/datas/updateTable'
         } else {
-            {#console.log(initialData.data);#}
+            // console.log(initialData.data);
             tableConfig.serverSide=false;
-            {#tableConfig.draw=initialData.draw;#}
-            {#tableConfig.recordsTotal=initialData.recordsTotal;#}
-            {#    tableConfig.recordsFiltered=initialData.recordsFiltered;#}
+            // tableConfig.draw=initialData.draw;
+            // tableConfig.recordsTotal=initialData.recordsTotal;
+            //     tableConfig.recordsFiltered=initialData.recordsFiltered;
             tableConfig['data'] = initialData.data;
         }
-        {#console.log('config:', tableConfig);#}
+        // console.log('config:', tableConfig);
 
         let table = $('#myTable').DataTable(tableConfig);
-        {#console.log('271')#}
+        // console.log('271')
         const updateTable = () => {
             $.ajax({
                 url: '/datas/updateTable',
                 method: 'GET',
                 success: function (data) {
-                    {#localStorage.setItem('tableData', JSON.stringify(data));#}
-                    {#console.log(data);#}
-                    {#console.log(table.rows);#}
+                    // localStorage.setItem('tableData', JSON.stringify(data));
+                    // console.log(data);
+                    // console.log(table.rows);
                     table.clear();
                     table.rows.add(data);
                     table.draw();

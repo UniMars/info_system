@@ -23,7 +23,7 @@ STATICFILES_DIRS = [
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.1/howto/static-files/
 
-STATIC_URL = "static/"
+STATIC_URL = "/static/"
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.1/howto/deployment/checklist/
@@ -34,8 +34,8 @@ SECRET_KEY = "django-insecure-0fegh@c%%!1y)bi^d-+49#$y@_e9gfz!s6$o!)b4$or^06(vhd
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ["127.0.0.1",
-                 "10.4.32.140"]
+ALLOWED_HOSTS = ['*']
+# "127.0.0.1", "10.4.32.140"
 
 # Application definition
 
@@ -65,8 +65,7 @@ ROOT_URLCONF = "info_system.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [BASE_DIR / 'templates']
-        ,
+        "DIRS": [BASE_DIR / 'templates'],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -105,9 +104,7 @@ DATABASES = {
 # https://docs.djangoproject.com/en/4.1/ref/settings/#auth-password-validators
 
 AUTH_PASSWORD_VALIDATORS = [
-    {
-        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
-    },
+    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator", },
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator", },
     {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator", },
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator", },
@@ -128,3 +125,61 @@ USE_TZ = False
 # https://docs.djangoproject.com/en/4.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple',
+        },
+        'infofile': {
+            'level': 'INFO',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': BASE_DIR / 'logs/info.log',
+            "maxBytes": 1024 * 1024 * 512,
+            "backupCount": 5,
+            "encoding": "utf-8",
+            'formatter': 'simple',
+        },
+        'errorfile': {
+            'level': 'ERROR',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': BASE_DIR / 'logs/error.log',
+            "maxBytes": 1024 * 1024 * 512,
+            "backupCount": 5,
+            "encoding": "utf-8",
+            'formatter': 'verbose',
+        },
+        'debugfile': {
+            'level': 'DEBUG',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': BASE_DIR / 'logs/debug.log',
+            "maxBytes": 1024 * 1024 * 512,
+            "backupCount": 5,
+            "encoding": "utf-8",
+            'formatter': 'verbose',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console', 'infofile', 'errorfile', 'debugfile'],
+            # 'level': 'ERROR',
+        },
+    },
+    'formatters': {
+        'verbose': {
+            'format':
+                '%(levelname)s %(asctime)s MODULE:%(module)s PROCESS:%(process)d THREAD:%(thread)d MSG:%(message)s'
+        },
+        'console_verbose': {
+            'format':
+                '%(levelname)s %(asctime)s MODULE:%(module)s PROCESS:%(process)d THREAD:%(thread)d MSG:%(message)s'
+        },
+
+        'simple': {
+            'format': '%(levelname)s - %(asctime)s - %(message)s'
+        },
+    },
+}

@@ -9,8 +9,6 @@ import chardet
 import numpy as np
 import pandas as pd
 
-os.system('chcp 65001')
-
 
 class LoadDatetime(json.JSONEncoder):
     """
