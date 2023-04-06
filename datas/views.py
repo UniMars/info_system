@@ -2,12 +2,13 @@
 import concurrent.futures
 import logging
 import math
-import multiprocessing
+# import multiprocessing
 import os
 import re
 
 import jieba
 import pandas as pd
+from django.conf import settings
 from django.core.paginator import Paginator
 from django.db import connections, transaction
 from django.db.models import Sum
@@ -18,19 +19,7 @@ from django.views.decorators.cache import cache_page
 from utils.json_load import json_load
 from .models import GovAggr, GovAggrWordFreq
 
-# os.system('chcp')
-logger = logging.getLogger()
-logger.setLevel(logging.INFO)
-console_handler = logging.StreamHandler()
-console_handler.setLevel(logging.INFO)
-# 定义一个格式字符串，包括时间戳、日志级别和日志消息
-format_string = "%(asctime)s - %(levelname)s - %(message)s"
-# 创建一个 Formatter 对象，并将格式字符串传递给它
-formatter = logging.Formatter(format_string)
-# 将 Formatter 应用于处理器
-console_handler.setFormatter(formatter)
-# 将处理器添加到日志记录器中
-logger.addHandler(console_handler)
+logger = logging.getLogger('django')
 
 
 # Create your views here.
@@ -40,23 +29,20 @@ def index(response):
 
 
 def data_import(response, filepath: str = r"D:\Programs\Code\python\projects\info_system\DATA\政府网站数据\数据汇总"):
-    os.system('chcp 65001')
-    # logging.getLogger().setLevel(logging.INFO)
-    logging.info("导入数据中")
-    os.system('chcp')
+    logger.info("政府汇总数据导入中")
     try:
         data_json = json_load(filepath)
         area_pattern = re.compile(r'[^\d-]+')
         # time_pattern = re.compile(r'\W*\d{4}年\d+月\d{1,2}日\W*')
 
         for name_key, value_list in data_json.items():
-            logging.info(f"读取文件：{name_key}")
+            logger.debug(f"读取文件：{name_key}")
             # 匹配地区名
             match_res = area_pattern.search(name_key)
             if match_res and match_res.group()[-2:] == "文件":
                 area = match_res.group()[:-2]
             else:
-                logging.error('地区名称读取失败')
+                logger.error('地区名称读取失败')
                 area = ''
                 # raise ValueError("地区名称读取失败")
 
@@ -129,7 +115,7 @@ def data_import(response, filepath: str = r"D:\Programs\Code\python\projects\inf
                     }
                     data_model = GovAggr(**update_fields)
                 data_model.save()
-        logging.info("输出结束")
+        logger.info("政府汇总数据读取写入完成")
         return HttpResponse("写入完成")
     except Exception as e:
         logging.error(f"ERROR:{e}")
@@ -155,20 +141,21 @@ def table_update(request):
         return JsonResponse(response)
     except Exception as e:
         data = {'request': request}
-        logging.error(f"ERROR:{e}")
+        logger.error(f"TABLE UPDATE ERROR:{e}")
         return JsonResponse(data, safe=False)
 
 
 def word_split(request):
-    logging.info("start splitting")
+    logger.info("start word splitting")
     articles = GovAggr.objects.filter(is_split=False)
     # 加载停用词
     stopwords = []
-    with open('datas/stopwords.txt', 'r', encoding='utf-8') as f:
+    stopwords_file_path = os.path.join(settings.STATIC_ROOT, 'stopwords.txt')
+    with open(stopwords_file_path, 'r', encoding='utf-8') as f:
         for line in f:
             stopwords.append(line.strip())
-    cpu_count = multiprocessing.cpu_count()
-    # cpu_count = 2
+    # cpu_count = multiprocessing.cpu_count()
+    cpu_count = 16
     all_records = articles.count()
     record_per_process = math.ceil(all_records / cpu_count)
     # pool = multiprocessing.Pool(processes=cpu_count)
@@ -190,15 +177,15 @@ def word_split(request):
             model_list = articles[start:end]
             future = executor.submit(word_split_multiprocess_task, model_list, stopwords)
             futures.append(future)
-            logging.info(f"thread {_} start\n")
+            logger.debug(f"thread {_} start")
 
         # 等待所有线程完成
         for future in concurrent.futures.as_completed(futures):
             try:
                 future.result()
             except Exception as e:
-                logging.error(f"Writing:{e}")
-    logging.info("----------finished----------")
+                logger.error(f"Word splitting Writing:{e}")
+    logger.info("----------All Thread finished----------")
     # articles.update(is_split=True)
     # print(request)
     return HttpResponse("分词中")
@@ -229,7 +216,8 @@ def word_split_multiprocess_task(model_list, stopwords):
                 word_model_list = []
                 unique_word_models = set()
                 for word, freq in word_freq.items():
-                    if (word, article.id) in unique_word_models or GovAggrWordFreq.objects.filter(word=word, record=article).exists():
+                    if (word, article.id) in unique_word_models or GovAggrWordFreq.objects.filter(word=word,
+                                                                                                  record=article).exists():
                         continue
                     else:
                         word_freq_model = GovAggrWordFreq(word=word, freq=freq, record=article)
@@ -239,16 +227,17 @@ def word_split_multiprocess_task(model_list, stopwords):
                     GovAggrWordFreq.objects.bulk_create(word_model_list)
                 article.is_split = True
                 article.save()
-                logging.info(f"article {article.id} saved")
+                logger.debug(f"article {article.id} saved")
 
 
 @cache_page(7200)
 def wordcloud(request):
-    logging.info('start')
+    logger.info('wordcloud start')
     aggregated_words = GovAggrWordFreq.objects.values('word').annotate(total_freq=Sum('freq')).order_by('-total_freq')[:1000]
+    # TODO
     print(len(aggregated_words))
     word_freq = [{'name': word['word'], 'value': word['total_freq']} for word in aggregated_words]
     # word_freq = word_freq[:1000]
     context = {'word_freq': word_freq}
-    logging.info('end')
+    logger.info('wordcloud end')
     return JsonResponse(context)

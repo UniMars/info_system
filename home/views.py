@@ -1,4 +1,5 @@
 import datetime
+import logging
 
 from django.http import JsonResponse
 from django.shortcuts import render
@@ -10,7 +11,10 @@ def current_time(request):
     return JsonResponse(data)
 
 
+logger = logging.getLogger('django')
+
+
 # Create your views here.
 def home(request):
-    return render(request, 'home.html',
-                  {'current': datetime.datetime.now()})
+    logger.info('django project start successfully')
+    return render(request, 'home.html', {'current': datetime.datetime.now()})
