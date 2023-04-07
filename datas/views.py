@@ -1,18 +1,15 @@
 # -*- coding: utf-8 -*-
 import concurrent.futures
-import hashlib
+import jieba
 import logging
 import math
 # import multiprocessing
 import os
-import re
-
-import jieba
 import pandas as pd
+import re
 from django.conf import settings
 from django.core.paginator import Paginator
 from django.db import connections, transaction
-from django.db.models import Sum
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render
 from django.views.decorators.cache import cache_page
@@ -29,8 +26,9 @@ def index(response):
     return render(response, 'dataDemo.html')
 
 
-def gov_data_import(response, filepath: str = settings.BASE_DIR / "//DATA//政府网站数据//数据汇总"):
+def gov_data_import(response, filepath: str = settings.BASE_DIR / "DATA/政府网站数据/数据汇总"):
     logger.info("政府汇总数据导入中")
+    logger.info(f"读取文件：{filepath}")
     try:
         data_json = load_forms(filepath)
         area_pattern = re.compile(r'[^\d-]+')
