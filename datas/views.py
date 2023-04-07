@@ -1,22 +1,20 @@
 # -*- coding: utf-8 -*-
 import concurrent.futures
+import jieba
 import logging
 import math
 # import multiprocessing
 import os
-import re
-
-import jieba
 import pandas as pd
+import re
 from django.conf import settings
 from django.core.paginator import Paginator
 from django.db import connections, transaction
-from django.db.models import Sum
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render
 from django.views.decorators.cache import cache_page
 
-from utils.json_load import json_load
+from utils.json_load import load_forms, generate_id
 from .models import GovDoc, GovDocWordFreq, GovDocWordFreqAggr
 
 logger = logging.getLogger('django')
@@ -28,10 +26,11 @@ def index(response):
     return render(response, 'dataDemo.html')
 
 
-def data_import(response, filepath: str = r"D:\Programs\Code\python\projects\info_system\DATA\政府网站数据\数据汇总"):
+def gov_data_import(response, filepath: str = settings.BASE_DIR / "DATA/政府网站数据/数据汇总"):
     logger.info("政府汇总数据导入中")
+    logger.info(f"读取文件：{filepath}")
     try:
-        data_json = json_load(filepath)
+        data_json = load_forms(filepath)
         area_pattern = re.compile(r'[^\d-]+')
         # time_pattern = re.compile(r'\W*\d{4}年\d+月\d{1,2}日\W*')
 
@@ -119,8 +118,7 @@ def data_import(response, filepath: str = r"D:\Programs\Code\python\projects\inf
         return HttpResponse("写入完成")
     except Exception as e:
         logging.error(f"ERROR:{e}")
-        # print(response)
-    return JsonResponse({'info': "数据汇总表写入完成", 'response': str(response)})
+    return JsonResponse({'info': "数据汇总表写入完成"})
 
 
 def table_update(request):
@@ -134,13 +132,13 @@ def table_update(request):
 
         paginator = Paginator(queryset, length)
         page_number = (start // length) + 1
-        data = [{'发布日期': obj.pub_date, '地区': obj.area, '类型': obj.types, '标题': obj.title, '链接': obj.link,
-                 '正文': obj.content}
+        data = [{'发布日期': obj.pub_date, '地区': obj.area, '类型': obj.types, '标题': obj.title, '来源': obj.source,
+                 '级别': obj.level, }
                 for obj in paginator.get_page(page_number)]
         response = {'draw': draw, 'recordsTotal': total_records, 'recordsFiltered': total_records, 'data': data}
         return JsonResponse(response)
     except Exception as e:
-        data = {'request': request}
+        data = {'update': False}
         logger.error(f"TABLE UPDATE ERROR:{e}")
         return JsonResponse(data, safe=False)
 
@@ -158,15 +156,6 @@ def word_split(request):
     cpu_count = 16
     all_records = articles.count()
     record_per_process = math.ceil(all_records / cpu_count)
-    # pool = multiprocessing.Pool(processes=cpu_count)
-    # for _ in range(cpu_count):
-    #     start = _ * record_per_process
-    #     end = (_ + 1) * record_per_process
-    #     model_list = articles[start:end]
-    #     pool.apply_async(word_split_multiprocess_task, args=(model_list, stopwords))
-    #     print(f"multiprocess {_} start\n")
-    # pool.close()
-    # pool.join()
 
     # 使用ThreadPoolExecutor替代multiprocessing.Pool
     with concurrent.futures.ThreadPoolExecutor(max_workers=cpu_count) as executor:
@@ -186,8 +175,6 @@ def word_split(request):
             except Exception as e:
                 logger.error(f"Word splitting Writing:{e}")
     logger.info("----------All Thread finished----------")
-    # articles.update(is_split=True)
-    # print(request)
     return HttpResponse("分词中")
 
 
@@ -197,53 +184,55 @@ def word_split_multiprocess_task(model_list, stopwords):
     # 关闭连接并确保重新建立连接
     connection.close()
     connection.ensure_connection()
-
     # 使用游标执行原生SQL查询
     with connection.cursor() as _:
         stop_pattern = re.compile(r'[\s\d\u2002\u2003\u3000\xa0二三四五六七八九]')
         for article in model_list:
             with transaction.atomic():
-                # 分词并词频统计
-                word_freq = {}
-                for word in jieba.cut(article.content):
-                    # if len(word) == 1:
-                    #     continue
-                    # 去除停用词和数字,标点符号
-                    if word in stopwords or stop_pattern.search(word):
-                        continue
-                    word_freq[word] = word_freq.get(word, 0) + 1
-                word_model_list = []
-                unique_word_models = set()
-                for word, freq in word_freq.items():
-                    if (word, article.id) in unique_word_models or GovDocWordFreq.objects.filter(word=word,
-                                                                                                 record=article).exists():
-                        continue
-                    else:
-                        word_freq_model = GovDocWordFreq(word=word, freq=freq, record=article)
-                        area = GovDoc.objects.get(id=article.id).area
-                        word_total_model = GovDocWordFreqAggr.objects.get_or_create(word=word, area='TOTAL')[0]
-                        word_area_model = GovDocWordFreqAggr.objects.get_or_create(word=word, area=area)[0]
-                        word_total_model.freq += freq
-                        word_area_model.freq += freq
-                        word_total_model.save()
-                        word_area_model.save()
-                        word_model_list.append(word_freq_model)
-                        unique_word_models.add((word, article.id))
-                if len(word_model_list):
-                    GovDocWordFreq.objects.bulk_create(word_model_list)
-                article.is_split = True
-                article.save()
-                logger.debug(f"article {article.id} saved")
+                try:
+                    # 分词并词频统计
+                    word_freq = {}
+                    for word in jieba.cut(article.content):
+                        # 去除停用词和数字,标点符号
+                        if word in stopwords or stop_pattern.search(word):
+                            continue
+                        if word.isalpha():
+                            word = word.lower()
+                        word_freq[word] = word_freq.get(word, 0) + 1
+                    word_model_list = []
+                    unique_word_models = set()
+                    for word, freq in word_freq.items():
+                        if (word, article.id) in unique_word_models:
+                            continue
+                        if GovDocWordFreq.objects.filter(word=word, record=article).exists():
+                            continue
+                        else:
+                            uid = generate_id(word, article.id)
+                            word_freq_model = GovDocWordFreq(id=uid, word=word, freq=freq, record=article)
+                            area = GovDoc.objects.get(id=article.id).area
+                            word_total_model = GovDocWordFreqAggr.objects.get_or_create(word=word, area='TOTAL')[0]
+                            word_area_model = GovDocWordFreqAggr.objects.get_or_create(word=word, area=area)[0]
+                            word_total_model.freq += freq
+                            word_area_model.freq += freq
+                            word_total_model.save(update_fields=['freq'])
+                            word_area_model.save(update_fields=['freq'])
+                            word_model_list.append(word_freq_model)
+                            unique_word_models.add((word, article.id))
+                    if len(word_model_list):
+                        GovDocWordFreq.objects.bulk_create(word_model_list)
+                    article.is_split = True
+                    article.save(update_fields=['is_split'])
+                    logger.debug(f"article {article.id} saved")
+                except Exception as e:
+                    logger.error(f"articleID:{article.id} Word Saving:{e}")
+                    continue
 
 
 @cache_page(7200)
 def wordcloud(request):
     logger.info('wordcloud start')
-    # aggregated_words = GovDocWordFreq.objects.values('word').annotate(total_freq=Sum('freq')).order_by('-total_freq')[:1000]
     aggregated_words = GovDocWordFreqAggr.objects.filter(area='TOTAL').order_by('-freq')[:1000]
-    # print(len(aggregated_words))
     word_freq = [{'name': word['word'], 'value': word['total_freq']} for word in aggregated_words]
-    # word_freq = word_freq[:1000]
     context = {'word_freq': word_freq}
     logger.info('wordcloud end')
     return JsonResponse(context)

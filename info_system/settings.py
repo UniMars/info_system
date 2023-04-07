@@ -20,13 +20,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # 静态文件 (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.1/howto/static-files/
 
+STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
 STATICFILES_DIRS = [
     BASE_DIR / "static",
 ]
 
-STATIC_URL = "/static/"
 
 # 安全警告：在生产环境中要保护好使用的密钥！
 load_dotenv(dotenv_path=BASE_DIR / '.env')
@@ -138,6 +138,7 @@ LOGGING = {
         'console': {
             'class': 'logging.StreamHandler',
             'formatter': 'simple',
+            'level': 'INFO',
         },
         'infofile': {
             'level': 'INFO',
@@ -170,7 +171,7 @@ LOGGING = {
     'loggers': {
         'django': {
             'handlers': ['console', 'infofile', 'errorfile', 'debugfile'],
-            # 'level': 'ERROR',
+            'level': 'DEBUG',
         },
     },
     'formatters': {
