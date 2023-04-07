@@ -131,13 +131,15 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # 日志配置
 if not os.path.exists(BASE_DIR / 'logs'):
     os.mkdir(BASE_DIR / 'logs')
+
+DEFAULT_CHARSET = 'utf-8'
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
     'handlers': {
         'console': {
             'class': 'logging.StreamHandler',
-            'formatter': 'simple',
+            'formatter': 'console_verbose',
             'level': 'INFO',
         },
         'infofile': {
@@ -167,21 +169,39 @@ LOGGING = {
             "encoding": "utf-8",
             'formatter': 'verbose',
         },
+        'db_file': {
+            'level': 'DEBUG',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': BASE_DIR / 'logs/db_debug.log',
+            "maxBytes": 1024 * 1024 * 512,
+            "backupCount": 5,
+            "encoding": "utf-8",
+            'formatter': 'verbose',
+        },
     },
     'loggers': {
         'django': {
             'handlers': ['console', 'infofile', 'errorfile', 'debugfile'],
             'level': 'DEBUG',
         },
+        'django.utils.autoreload': {
+            'handlers': ['console', 'infofile', 'errorfile', 'debugfile'],
+            'level': 'INFO',
+        },
+        'django.db.backends': {
+            'handlers': ['db_file'],
+            'level': 'DEBUG',
+            'propagate': True,
+        },
     },
     'formatters': {
         'verbose': {
             'format':
-                '%(levelname)s %(asctime)s MODULE:%(module)s PROCESS:%(process)d THREAD:%(thread)d MSG:%(message)s'
+                '%(levelname)s %(asctime)s MODULE:%(module)s PROCESS:%(process)d THREAD:%(thread)d MESSAGE:%(message)s'
         },
         'console_verbose': {
             'format':
-                '%(levelname)s %(asctime)s MODULE:%(module)s PROCESS:%(process)d THREAD:%(thread)d MSG:%(message)s'
+                '%(levelname)s %(asctime)s MODULE:%(module)s PROCESS:%(process)d THREAD:%(thread)d CONSOLE_MESSAGE:%(message)s',
         },
 
         'simple': {

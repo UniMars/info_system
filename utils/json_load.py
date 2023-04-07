@@ -105,7 +105,10 @@ def generate_id(word: str, record_id: int):
     # 将哈希值与record_id组合以生成64位ID
     id_64_bits = (hash_lower_32_bits << 32) | record_id
 
-    return id_64_bits
+    # 将最高位设置为0，以确保返回的是63位整数
+    id_63_bits = id_64_bits & 0x7FFFFFFFFFFFFFFF
+
+    return id_63_bits
 
 # print("生成json文件中")
 # with open("D:/zl/res_数据汇总.json", "w") as f:

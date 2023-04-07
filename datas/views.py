@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
 import concurrent.futures
+import multiprocessing
+import time
+
 import jieba
 import logging
 import math
@@ -73,7 +76,7 @@ def gov_data_import(response, filepath: str = settings.BASE_DIR / "DATA/政府�
                     else:
                         for alt_key in alternatives:
                             if alt_key in item:
-                                result[map_key] = str(item[alt_key])
+                                result[map_key] = str(item[alt_key]) if item[alt_key] else ''
                                 # if map_key not in ['pub_date'] else item[alt_key]
                                 break
                     result[map_key] = result[map_key].strip()
@@ -89,13 +92,13 @@ def gov_data_import(response, filepath: str = settings.BASE_DIR / "DATA/政府�
                 else:
                     result['pub_date'] = None
 
-                types = result['types']
-                link = result['link'][:2000]
+                types = result['types'][:500]
+                link = result['link']
                 title = result['title'][:500]
-                content = result['content'][:10000]
+                content = result['content']
                 pub_date = result['pub_date']
                 source = result['source'][:50]
-                level = result['level']
+                level = result['level'][:50]
                 if GovDoc.objects.filter(area=area, title=title).exists():
                     continue
                 if pub_date and not GovDoc.objects.filter(area=area, title=title, pub_date=pub_date).exists():
@@ -152,8 +155,7 @@ def word_split(request):
     with open(stopwords_file_path, 'r', encoding='utf-8') as f:
         for line in f:
             stopwords.append(line.strip())
-    # cpu_count = multiprocessing.cpu_count()
-    cpu_count = 16
+    cpu_count = multiprocessing.cpu_count() if multiprocessing.cpu_count() < 32 else 32
     all_records = articles.count()
     record_per_process = math.ceil(all_records / cpu_count)
 
@@ -164,7 +166,7 @@ def word_split(request):
             start = _ * record_per_process
             end = (_ + 1) * record_per_process
             model_list = articles[start:end]
-            future = executor.submit(word_split_multiprocess_task, model_list, stopwords)
+            future = executor.submit(word_split_multiprocess_task, model_list, stopwords, cpu_count)
             futures.append(future)
             logger.debug(f"thread {_} start")
 
@@ -178,7 +180,7 @@ def word_split(request):
     return HttpResponse("分词中")
 
 
-def word_split_multiprocess_task(model_list, stopwords):
+def word_split_multiprocess_task(model_list, stopwords, thread_count=16):
     # 获取默认数据库的连接
     connection = connections['default']
     # 关闭连接并确保重新建立连接
@@ -187,45 +189,58 @@ def word_split_multiprocess_task(model_list, stopwords):
     # 使用游标执行原生SQL查询
     with connection.cursor() as _:
         stop_pattern = re.compile(r'[\s\d\u2002\u2003\u3000\xa0二三四五六七八九]')
+        max_retries = thread_count * 2
         for article in model_list:
-            with transaction.atomic():
-                try:
-                    # 分词并词频统计
-                    word_freq = {}
-                    for word in jieba.cut(article.content):
-                        # 去除停用词和数字,标点符号
-                        if word in stopwords or stop_pattern.search(word):
-                            continue
-                        if word.isalpha():
-                            word = word.lower()
-                        word_freq[word] = word_freq.get(word, 0) + 1
-                    word_model_list = []
-                    unique_word_models = set()
-                    for word, freq in word_freq.items():
-                        if (word, article.id) in unique_word_models:
-                            continue
-                        if GovDocWordFreq.objects.filter(word=word, record=article).exists():
-                            continue
-                        else:
-                            uid = generate_id(word, article.id)
-                            word_freq_model = GovDocWordFreq(id=uid, word=word, freq=freq, record=article)
-                            area = GovDoc.objects.get(id=article.id).area
-                            word_total_model = GovDocWordFreqAggr.objects.get_or_create(word=word, area='TOTAL')[0]
-                            word_area_model = GovDocWordFreqAggr.objects.get_or_create(word=word, area=area)[0]
-                            word_total_model.freq += freq
-                            word_area_model.freq += freq
-                            word_total_model.save(update_fields=['freq'])
-                            word_area_model.save(update_fields=['freq'])
-                            word_model_list.append(word_freq_model)
-                            unique_word_models.add((word, article.id))
-                    if len(word_model_list):
-                        GovDocWordFreq.objects.bulk_create(word_model_list)
-                    article.is_split = True
-                    article.save(update_fields=['is_split'])
-                    logger.debug(f"article {article.id} saved")
-                except Exception as e:
-                    logger.error(f"articleID:{article.id} Word Saving:{e}")
+            # 分词并词频统计
+            word_freq = {}
+            for word in jieba.cut(article.content):
+                # 去除停用词和数字,标点符号,并转换为小写
+                if word in stopwords or stop_pattern.search(word):
                     continue
+                word = word if not word.isalpha() else word.lower()
+                # 词频统计
+                word_freq[word] = word_freq.get(word, 0) + 1
+
+            retries = 0
+            while retries < max_retries:
+                try:
+                    with transaction.atomic():
+                        word_model_list = []
+                        unique_word_models = set()
+                        for word, freq in word_freq.items():
+                            if (word, article.id) in unique_word_models:
+                                continue
+                            uid = generate_id(word, article.id)
+                            if GovDocWordFreq.objects.filter(id=uid).exists():
+                                continue
+                            else:
+                                word_freq_model = GovDocWordFreq(id=uid, word=word, freq=freq, record=article)
+                                area = GovDoc.objects.get(id=article.id).area
+                                word_model_list.append(word_freq_model)
+                                unique_word_models.add((word, article.id))
+
+                                # TODO 多线程死锁问题优化
+                                word_total_model = GovDocWordFreqAggr.objects.get_or_create(word=word, area='TOTAL')[0]
+                                word_area_model = GovDocWordFreqAggr.objects.get_or_create(word=word, area=area)[0]
+                                word_total_model.freq += freq
+                                word_area_model.freq += freq
+                                word_total_model.save(update_fields=['freq'])
+                                word_area_model.save(update_fields=['freq'])
+
+                        if len(word_model_list):
+                            GovDocWordFreq.objects.bulk_create(word_model_list)
+                        article.is_split = True
+                        article.save(update_fields=['is_split'])
+                        logger.debug(f"article {article.id} saved")
+                except Exception as e:
+                    if 'Deadlock found' in str(e):  # 如果是死锁异常，尝试重试
+                        retries += 1
+                        time.sleep(0.5)  # 等待0.5秒后重试
+                        if retries == max_retries:
+                            logger.error(f"articleID:{article.id} Word Saving:{str(e)} (Reached max retries)")
+                    else:
+                        logger.error(f"articleID:{article.id} Word Saving:{str(e)}")
+                        break
 
 
 @cache_page(7200)
