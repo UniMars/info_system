@@ -74,7 +74,7 @@
 <div class="container-content">
 
     <div class="row this-row">
-<!--                侧边栏-->
+        <!--                侧边栏-->
         <div class="col-md-2 bg-light text-grey p-3 " style="border: solid 1px #c4c3c3">
             <div class="d-flex nav flex-column nav-pills this-sidebar" id="v-pills-tab" role="tablist"
                  aria-orientation="vertical">
@@ -130,7 +130,7 @@
                      aria-labelledby="v-pills-form-tab" style="width: 100% ;height: 100%">
 
                     <button class="btn btn-primary mb-3" id="importData">导入数据</button>
-<!--                                data-bs-toggle="modal" data-bs-target="#importModal"-->
+                    <!--                                data-bs-toggle="modal" data-bs-target="#importModal"-->
                     <button class="btn btn-primary mb-3" id="updateTable">更新数据</button>
                     <button class="btn btn-primary mb-3" id="wordSplit">分词统计</button>
                     <br>
@@ -139,7 +139,7 @@
                         数据汇总表预览
                     </h1>
                     <table class="display" id="myTable" style="white-space: nowrap">
-<!--                                        <caption>data demo</caption>-->
+                        <!--                                        <caption>data demo</caption>-->
                         <thead>
                         </thead>
                         <tbody>
@@ -162,8 +162,8 @@
 
 <script type="text/javascript">
     $(document).ready(function () {
-        var cachedData = localStorage.getItem('tableData');
-        var initialData = cachedData ? JSON.parse(cachedData) : [];
+        {#var cachedData = localStorage.getItem('tableData');#}
+        {#var initialData = cachedData ? JSON.parse(cachedData) : [];#}
         let tableConfig = {
             'debug': true,
             'autoWidth': false,
@@ -181,24 +181,16 @@
                 {'title': "地区", 'data': "地区"},
                 {'title': "类型", 'data': "类型"},
                 {'title': "标题", 'data': "标题"},
-                {'title': "链接", 'data': "链接"},
-                {'title': "正文", 'data': "正文"}
+                {'title': "来源", 'data': "来源"},
+                {'title': "级别", 'data': "级别"}
             ],
         };
-        // console.log('00000')
-// initialData.length ===
-        if ( 1) {
+        if (1) {
             tableConfig.ajax = '/datas/updateTable'
         } else {
-            // console.log(initialData.data);
-            tableConfig.serverSide=false;
-            // tableConfig.draw=initialData.draw;
-            // tableConfig.recordsTotal=initialData.recordsTotal;
-            //     tableConfig.recordsFiltered=initialData.recordsFiltered;
+            tableConfig.serverSide = false;
             tableConfig['data'] = initialData.data;
         }
-        // console.log('config:', tableConfig);
-
         let table = $('#myTable').DataTable(tableConfig);
         // console.log('271')
         const updateTable = () => {
@@ -245,8 +237,8 @@
         };
 
         $('#updateTable').on('click', function () {
-                updateTable();
-            });
+            updateTable();
+        });
         $('#importData').on('click', importData);
         $('#wordSplit').on('click', wordSplit);
 
