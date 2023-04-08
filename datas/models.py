@@ -28,7 +28,7 @@ class KeyWord(models.Model):
 
 class GovDocWordFreq(models.Model):
     id = models.BigIntegerField(primary_key=True, editable=False)
-    word = models.CharField(max_length=50)
+    word = models.CharField(max_length=500)
     freq = models.IntegerField(default=0)
     record = models.ForeignKey(GovDoc, on_delete=models.CASCADE)
 
@@ -37,7 +37,8 @@ class GovDocWordFreq(models.Model):
 
 
 class GovDocWordFreqAggr(models.Model):
-    word = models.CharField(max_length=50)
+    id = models.BigAutoField(primary_key=True, editable=False, verbose_name="ID")
+    word = models.CharField(max_length=500)
     freq = models.IntegerField(default=0)
     area = models.CharField(max_length=50, default='TOTAL')
 
@@ -47,7 +48,7 @@ class GovDocWordFreqAggr(models.Model):
 
 class TestModel(models.Model):
     id = models.IntegerField(primary_key=True, editable=False)
-    name = models.CharField(max_length=50)
+    name = models.CharField(max_length=50, default='test_name')
     age = models.IntegerField(default=0)
 
     def save(self, *args, **kwargs):

@@ -1,18 +1,21 @@
 # -*- coding: utf-8 -*-
 import concurrent.futures
-import multiprocessing
-import time
-
-import jieba
 import logging
 import math
+import multiprocessing
 # import multiprocessing
 import os
-import pandas as pd
 import re
+import time
+from collections import defaultdict
+from typing import Union
+
+import jieba
+import pandas as pd
 from django.conf import settings
 from django.core.paginator import Paginator
 from django.db import connections, transaction
+from django.db.models import F
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render
 from django.views.decorators.cache import cache_page
@@ -124,6 +127,7 @@ def gov_data_import(response, filepath: str = settings.BASE_DIR / "DATA/政府�
     return JsonResponse({'info': "数据汇总表写入完成"})
 
 
+@cache_page(7200)
 def table_update(request):
     try:
         draw = int(request.GET.get('draw', 1))
@@ -150,105 +154,164 @@ def word_split(request):
     logger.info("start word splitting")
     articles = GovDoc.objects.filter(is_split=False)
     # 加载停用词
-    stopwords = []
+    stopwords = set()
     stopwords_file_path = os.path.join(settings.STATIC_ROOT, 'stopwords.txt')
     with open(stopwords_file_path, 'r', encoding='utf-8') as f:
         for line in f:
-            stopwords.append(line.strip())
-    cpu_count = multiprocessing.cpu_count() if multiprocessing.cpu_count() < 32 else 32
+            stopwords.add(line.strip())
+        stop_pattern = re.compile(r'[\s\u2002\u2003\u3000\u200b\u200d\xa0\x7f\d二三四五六七八九.]')
+
+    cpu_count = multiprocessing.cpu_count() * 2 if multiprocessing.cpu_count() < 17 else 32
     all_records = articles.count()
     record_per_process = math.ceil(all_records / cpu_count)
 
     # 使用ThreadPoolExecutor替代multiprocessing.Pool
     with concurrent.futures.ThreadPoolExecutor(max_workers=cpu_count) as executor:
         futures = []
+        try:
+            import jieba_fast
+            tokenizer = jieba_fast.Tokenizer()  # 创建分词器实例
+        except Exception as _:
+            logger.error(f"{_}:jieba_fast not found, use jieba instead")
+            tokenizer = jieba.Tokenizer()  # 创建分词器实例
+
         for _ in range(cpu_count):
+            logger.debug(f"thread {_} start")
             start = _ * record_per_process
             end = (_ + 1) * record_per_process
             model_list = articles[start:end]
-            future = executor.submit(word_split_multiprocess_task, model_list, stopwords, cpu_count)
+            params = {
+                'model_list': model_list,
+                'tokenizer': tokenizer,
+                'stopwords': stopwords,
+                'stop_pattern': stop_pattern,
+                'thread': _
+            }
+            future = executor.submit(word_split_multiprocess_task, **params)
             futures.append(future)
-            logger.debug(f"thread {_} start")
+            logger.debug(f"thread {_} end")
 
         # 等待所有线程完成
         for future in concurrent.futures.as_completed(futures):
-            try:
-                future.result()
-            except Exception as e:
-                logger.error(f"Word splitting Writing:{e}")
-    logger.info("----------All Thread finished----------")
-    return HttpResponse("分词中")
+            word_total_models = future.result()
+            for uid in word_total_models:
+                retries = 0
+                max_retries = 50
+                while retries < max_retries:
+                    try:
+                        # 把model 字典里的同名下的值分别赋给word,area,freq
+                        model = GovDocWordFreq.objects.get(id=uid)
+                        word, freq, record_id = model.word, model.freq, model.record_id
+                        area = GovDoc.objects.get(id=record_id).area
+                        with transaction.atomic():
+                            update_rows = GovDocWordFreqAggr.objects.filter(word=word,
+                                                                            area=area).select_for_update().update(
+                                freq=F('freq') + freq)
+                            if update_rows == 0:
+                                GovDocWordFreqAggr.objects.create(word=word, area=area, freq=freq)
+                            update_rows = GovDocWordFreqAggr.objects.filter(word=word,
+                                                                            area='TOTAL').select_for_update().update(
+                                freq=F('freq') + freq)
+                            if update_rows == 0:
+                                GovDocWordFreqAggr.objects.create(word=word, area='TOTAL', freq=freq)
+                        # future.result()
+                    except Exception as e:
+                        if 'Deadlock found' in str(e):  # 如果是死锁异常，尝试重试
+                            retries += 1
+                            time.sleep(0.5)  # 等待0.5秒后重试
+                            if retries == max_retries:
+                                logger.error(f"WordFreqAggr UID:{uid} Updating:{e} (Reached max retries)")
+                                with open(file=os.path.join(settings.STATIC_ROOT, 'logs', 'wrong_result.txt'),
+                                          mode='a',
+                                          encoding='utf-8') as f:
+                                    if word and freq and area:
+                                        f.write(f"\nUID_{uid} {word} {freq} {area}")
+                                    else:
+                                        f.write(f"\nUID_{uid}")
+                        else:
+                            logger.error(f"WordFreqAggr UID:{uid} Updating:{e}")
+                            with open(file=os.path.join(settings.STATIC_ROOT, 'logs', 'wrong_result.txt'),
+                                      mode='a',
+                                      encoding='utf-8') as f:
+                                if word and freq and area:
+                                    f.write(f"\nUID_{uid} {word} {freq} {area}")
+                                else:
+                                    f.write(f"\nUID_{uid}")
+                            break
+                    else:
+                        logger.debug(f"WordFreqAggr UID:{uid} Updated")
+                        break
+        logger.info("----------All Thread finished----------")
+        return HttpResponse("分词结束")
 
 
-def word_split_multiprocess_task(model_list, stopwords, thread_count=16):
+def word_split_multiprocess_task(model_list: list = None,
+                                 tokenizer: Union[jieba.Tokenizer, 'jieba_fast.Tokenizer'] = None,
+                                 stopwords: Union[set, list] = None,
+                                 stop_pattern: re.compile = re.compile(r'\s'),
+                                 worker=999):
     # 获取默认数据库的连接
+    if stopwords is None:
+        stopwords = []
+    if model_list is None:
+        model_list = []
+    if tokenizer is None:
+        tokenizer = jieba.Tokenizer()
     connection = connections['default']
     # 关闭连接并确保重新建立连接
     connection.close()
     connection.ensure_connection()
     # 使用游标执行原生SQL查询
-    with connection.cursor() as _:
-        stop_pattern = re.compile(r'[\s\d\u2002\u2003\u3000\xa0二三四五六七八九]')
-        max_retries = thread_count * 2
-        for article in model_list:
-            # 分词并词频统计
-            word_freq = {}
-            for word in jieba.cut(article.content):
+    # with connection.cursor() as _:
+
+    word_total_models = []
+    for article in model_list:
+        # 分词并词频统计
+        with defaultdict(int) as word_freq:
+            for word in tokenizer.cut(article.content):
                 # 去除停用词和数字,标点符号,并转换为小写
                 if word in stopwords or stop_pattern.search(word):
                     continue
                 word = word if not word.isalpha() else word.lower()
                 # 词频统计
-                word_freq[word] = word_freq.get(word, 0) + 1
+                word_freq[word] += 1
 
-            retries = 0
-            while retries < max_retries:
-                try:
-                    with transaction.atomic():
-                        word_model_list = []
-                        unique_word_models = set()
-                        for word, freq in word_freq.items():
-                            if (word, article.id) in unique_word_models:
-                                continue
-                            uid = generate_id(word, article.id)
-                            if GovDocWordFreq.objects.filter(id=uid).exists():
-                                continue
-                            else:
-                                word_freq_model = GovDocWordFreq(id=uid, word=word, freq=freq, record=article)
-                                area = GovDoc.objects.get(id=article.id).area
-                                word_model_list.append(word_freq_model)
-                                unique_word_models.add((word, article.id))
-
-                                # TODO 多线程死锁问题优化
-                                word_total_model = GovDocWordFreqAggr.objects.get_or_create(word=word, area='TOTAL')[0]
-                                word_area_model = GovDocWordFreqAggr.objects.get_or_create(word=word, area=area)[0]
-                                word_total_model.freq += freq
-                                word_area_model.freq += freq
-                                word_total_model.save(update_fields=['freq'])
-                                word_area_model.save(update_fields=['freq'])
-
-                        if len(word_model_list):
-                            GovDocWordFreq.objects.bulk_create(word_model_list)
-                        article.is_split = True
-                        article.save(update_fields=['is_split'])
-                except Exception as e:
-                    if 'Deadlock found' in str(e):  # 如果是死锁异常，尝试重试
-                        retries += 1
-                        time.sleep(0.5)  # 等待0.5秒后重试
-                        if retries == max_retries:
-                            logger.error(f"articleID:{article.id} Word Saving:{str(e)} (Reached max retries)")
+            # 保存词频统计结果写入数据表
+            word_model_list = []
+            with set() as unique_word_models:
+                for word, freq in word_freq.items():
+                    if (word, article.id) in unique_word_models:
+                        continue
+                    uid = generate_id(word, article.id)
+                    if GovDocWordFreq.objects.filter(id=uid).exists():
+                        continue
                     else:
-                        logger.error(f"articleID:{article.id} Word Saving:{str(e)}")
-                        break
-                else:
-                    logger.debug(f"article {article.id} saved")
+                        word_freq_model = GovDocWordFreq(id=uid, word=word, freq=freq, record=article)
+                        # area = GovDoc.objects.get(id=article.id).area
+                        word_model_list.append(word_freq_model)
+                        unique_word_models.add((word, article.id))
+                        word_total_models.append(uid)
+            try:
+                with transaction.atomic():
+                    if word_model_list:
+                        GovDocWordFreq.objects.bulk_create(word_model_list)
+                    article.is_split = True
+                    article.save(update_fields=['is_split'])
+                    logger.debug(f"article:{article.id} save success with WORKER:{worker}")
+            except Exception as e:
+                logger.error(f"bulk transaction error:{e} with WORKER:{worker}")
+            finally:
+                # 销毁word_model_list
+                del word_model_list
+
+    return word_total_models
 
 
 @cache_page(7200)
 def wordcloud(request):
     logger.info('wordcloud start')
     aggregated_words = GovDocWordFreqAggr.objects.filter(area='TOTAL').order_by('-freq')[:1000]
-    word_freq = [{'name': word['word'], 'value': word['total_freq']} for word in aggregated_words]
+    word_freq = [{'name': word.word, 'value': word.freq} for word in aggregated_words]
     context = {'word_freq': word_freq}
     logger.info('wordcloud end')
     return JsonResponse(context)
