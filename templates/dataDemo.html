@@ -135,6 +135,8 @@
                     <!--                                data-bs-toggle="modal" data-bs-target="#importModal"-->
                     <button class="btn btn-primary mb-3" id="updateTable">更新数据</button>
                     <button class="btn btn-primary mb-3" id="wordSplit">分词统计</button>
+                    <button class="btn btn-primary mb-3" id="test1">测试1</button>
+                    <button class="btn btn-primary mb-3" id="test2">测试2</button>
                     <br>
                     <h1 align="center">
 
@@ -212,38 +214,71 @@
                 }
             });
         };
-        const importData = () => {
+
+
+        $('#updateTable').on('click', function () {
+            updateTable();
+        });
+
+        $('#importData').on('click', function () {
             $.ajax({
-                url: '/datas/import',
+                url: '/datas/handle_task',
                 method: 'GET',
+                data: {task_type: 'gov_data_import', task_params: ''},
                 success: function () {
-                    localStorage.removeItem('tableData');
                     updateTable();
                 },
                 error: function (xhr, status, error) {
                     console.error('Error fetching new data:', error);
                 }
             });
-        };
+        });
 
-        const wordSplit = () => {
+        $('#wordSplit').on('click', function () {
             $.ajax({
+                url: '/datas/handle_task',
                 method: 'GET',
-                url: '/datas/wordSplit',
+                data: {task_type: 'word_split', task_params: ''},
                 success: function () {
+                    console.log('word split success')
                 },
                 error: function (xhr, status, error) {
                     console.error('Error:', error);
                 }
             });
-        };
-
-        $('#updateTable').on('click', function () {
-            updateTable();
         });
-        $('#importData').on('click', importData);
-        $('#wordSplit').on('click', wordSplit);
 
+        $('#test1').on('click',function () {
+            $.ajax({
+                url: '/datas/handle_task',
+                method: 'GET',
+                data: {task_type: 'test1', task_params: ''},
+                success: function () {
+                    console.log('test1 success')
+                },
+                error: function (xhr, status, error) {
+                    console.error('Error:', error);
+                }
+            });
+        });
+        $('#test2').on('click',function () {
+            let obj={
+                'a':1,
+                'b':2
+            };
+            let json_str=JSON.stringify(obj);
+            $.ajax({
+                url: '/datas/handle_task',
+                method: 'GET',
+                data: {task_type: 'test2', task_params: json_str},
+                success: function () {
+                    console.log('test2 success')
+                },
+                error: function (xhr, status, error) {
+                    console.error('Error:', error);
+                }
+            });
+        });
         const wordcloudDiv = document.getElementById('wordcloud');
         const chart = echarts.init(wordcloudDiv);
 
@@ -296,6 +331,8 @@
                 .then(response => response.json())
                 .then(data => {
                     updateWordCloud(data.word_freq);
+                    console.log(data);
+
                 })
                 .catch(error => {
                     console.error('Error fetching word frequency data:', error);
