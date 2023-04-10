@@ -61,6 +61,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    'middlewares.middleware.PageNotFoundMiddleware',
 ]
 
 ROOT_URLCONF = "info_system.urls"
@@ -100,6 +101,20 @@ DATABASES = {
             'charset': 'utf8mb4',
         },
     },
+}
+
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",		# 使用django-redis的缓存
+        "LOCATION": "redis://127.0.0.1:6379/1",			# redis数据库的位置
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            "CONNECTION_POOL_KWARGS": {"max_connections": 100},
+            "DECODE_RESPONSES": True,			# 自动将byte转成字符串
+            "PASSWORD": "",						# 设置密码
+        },
+        'KEY-PREFIX': 'info_sys',				# 设置缓存前缀
+    }
 }
 
 # 密码验证

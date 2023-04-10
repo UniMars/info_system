@@ -66,3 +66,11 @@ def set_id(sender, instance, **kwargs):
     if not instance.id:
         # set id to a positive integer
         instance.id = uuid.uuid4()
+
+
+class DataType(models.Model):
+    id = models.BigIntegerField(primary_key=True, editable=False)
+    name = models.CharField(max_length=50)
+
+    def __str__(self):
+        return self.name
