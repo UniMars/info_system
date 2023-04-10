@@ -1,80 +1,28 @@
+{% extends 'base.html' %}
 {% load static %}
-<!DOCTYPE html>
-<html lang="zh">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>信息系统-子页面</title>
+{% block title %}信息系统-数据展示页面{% endblock %}
+{% block head %}
+    <meta name="datatype" content="{{ data_type.id }}">
+
     <!-- 引入Bootstrap CSS文件 -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css">
     <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.11.3/css/jquery.dataTables.min.css">
-    <link rel="stylesheet" type="text/css" href="{% static 'css/style.css' %}">
-    <link rel="shortcut icon" type="image/x-icon" href="{% static 'image/favicon.ico' %}">
 
     <!-- 引入Bootstrap JS文件和其依赖项 -->
     <script src="https://cdn.bootcdn.net/ajax/libs/echarts/5.3.0/echarts.min.js"></script>
     <script src="{% static 'JavaScript/wordcloud/echarts-wordcloud.js' %}"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.11.3/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.min.js"></script>
-    <script src="https://cdn.datatables.net/1.11.3/js/jquery.dataTables.min.js"></script>
 
-</head>
-<body>
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" style="display: none;">
-    <symbol id="table" viewBox="0 0 16 16">
-        <path d="M0 2a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V2zm15 2h-4v3h4V4zm0 4h-4v3h4V8zm0 4h-4v3h3a1 1 0 0 0 1-1v-2zm-5 3v-3H6v3h4zm-5 0v-3H1v2a1 1 0 0 0 1 1h3zm-4-4h4V8H1v3zm0-4h4V4H1v3zm5-3v3h4V4H6zm4 4H6v3h4V8z"></path>
-    </symbol>
-    <symbol id="grid" viewBox="0 0 16 16">
-        <path d="M1 2.5A1.5 1.5 0 0 1 2.5 1h3A1.5 1.5 0 0 1 7 2.5v3A1.5 1.5 0 0 1 5.5 7h-3A1.5 1.5 0 0 1 1 5.5v-3zM2.5 2a.5.5 0 0 0-.5.5v3a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 .5-.5v-3a.5.5 0 0 0-.5-.5h-3zm6.5.5A1.5 1.5 0 0 1 10.5 1h3A1.5 1.5 0 0 1 15 2.5v3A1.5 1.5 0 0 1 13.5 7h-3A1.5 1.5 0 0 1 9 5.5v-3zm1.5-.5a.5.5 0 0 0-.5.5v3a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 .5-.5v-3a.5.5 0 0 0-.5-.5h-3zM1 10.5A1.5 1.5 0 0 1 2.5 9h3A1.5 1.5 0 0 1 7 10.5v3A1.5 1.5 0 0 1 5.5 15h-3A1.5 1.5 0 0 1 1 13.5v-3zm1.5-.5a.5.5 0 0 0-.5.5v3a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 .5-.5v-3a.5.5 0 0 0-.5-.5h-3zm6.5.5A1.5 1.5 0 0 1 10.5 9h3a1.5 1.5 0 0 1 1.5 1.5v3a1.5 1.5 0 0 1-1.5 1.5h-3A1.5 1.5 0 0 1 9 13.5v-3zm1.5-.5a.5.5 0 0 0-.5.5v3a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 .5-.5v-3a.5.5 0 0 0-.5-.5h-3z"></path>
-    </symbol>
-    <symbol id="speedometer2" viewBox="0 0 16 16">
-        <path d="M8 4a.5.5 0 0 1 .5.5V6a.5.5 0 0 1-1 0V4.5A.5.5 0 0 1 8 4zM3.732 5.732a.5.5 0 0 1 .707 0l.915.914a.5.5 0 1 1-.708.708l-.914-.915a.5.5 0 0 1 0-.707zM2 10a.5.5 0 0 1 .5-.5h1.586a.5.5 0 0 1 0 1H2.5A.5.5 0 0 1 2 10zm9.5 0a.5.5 0 0 1 .5-.5h1.5a.5.5 0 0 1 0 1H12a.5.5 0 0 1-.5-.5zm.754-4.246a.389.389 0 0 0-.527-.02L7.547 9.31a.91.91 0 1 0 1.302 1.258l3.434-4.297a.389.389 0 0 0-.029-.518z"></path>
-        <path fill-rule="evenodd"
-              d="M0 10a8 8 0 1 1 15.547 2.661c-.442 1.253-1.845 1.602-2.932 1.25C11.309 13.488 9.475 13 8 13c-1.474 0-3.31.488-4.615.911-1.087.352-2.49.003-2.932-1.25A7.988 7.988 0 0 1 0 10zm8-7a7 7 0 0 0-6.603 9.329c.203.575.923.876 1.68.63C4.397 12.533 6.358 12 8 12s3.604.532 4.923.96c.757.245 1.477-.056 1.68-.631A7 7 0 0 0 8 3z"></path>
-    </symbol>
-    <symbol id="collection" viewBox="0 0 16 16">
-        <path d="M2.5 3.5a.5.5 0 0 1 0-1h11a.5.5 0 0 1 0 1h-11zm2-2a.5.5 0 0 1 0-1h7a.5.5 0 0 1 0 1h-7zM0 13a1.5 1.5 0 0 0 1.5 1.5h13A1.5 1.5 0 0 0 16 13V6a1.5 1.5 0 0 0-1.5-1.5h-13A1.5 1.5 0 0 0 0 6v7zm1.5.5A.5.5 0 0 1 1 13V6a.5.5 0 0 1 .5-.5h13a.5.5 0 0 1 .5.5v7a.5.5 0 0 1-.5.5h-13z"></path>
-    </symbol>
-    <symbol id="calendar3" viewBox="0 0 16 16">
-        <path d="M14 0H2a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2zM1 3.857C1 3.384 1.448 3 2 3h12c.552 0 1 .384 1 .857v10.286c0 .473-.448.857-1 .857H2c-.552 0-1-.384-1-.857V3.857z"></path>
-        <path d="M6.5 7a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm3 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm3 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm-9 3a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm3 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm3 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm3 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm-9 3a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm3 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm3 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2z"></path>
-    </symbol>
-    <symbol id="chevron-right" viewBox="0 0 16 16">
-        <path fill-rule="evenodd"
-              d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z"></path>
-    </symbol>
 
-</svg>
 
-<nav class="navbar navbar-expand-lg navbar-dark bg-dark" aria-labelledby="navbarNav">
-    <div class="container">
-        <a class="navbar-brand" href="/">信息系统</a>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
-                aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-        <div class="collapse navbar-collapse" id="navbarNav">
-            <ul class="navbar-nav">
-                <li class="nav-item">
-                    <a class="nav-link " href="/">首页</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="/admin" target="_blank">管理员界面</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link active" href="/datas">政府数据</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="/report">报告展示</a>
-                </li>
-            </ul>
-        </div>
-    </div>
-</nav>
 
-<div class="container-content">
-
+{% endblock %}
+{% block navbar %}
+    {% include 'navbar.html' with active=data_type.id %}
+{% endblock %}
+{% block content %}
     <div class="row this-row">
         <!--                侧边栏-->
         <div class="col-md-2 bg-light text-grey p-3 " style="border: solid 1px #c4c3c3">
@@ -132,19 +80,22 @@
                      aria-labelledby="v-pills-form-tab" style="width: 100% ;height: 100%">
 
                     <button class="btn btn-primary mb-3" id="importData">导入数据</button>
-                    <!--                                data-bs-toggle="modal" data-bs-target="#importModal"-->
                     <button class="btn btn-primary mb-3" id="updateTable">更新数据</button>
                     <button class="btn btn-primary mb-3" id="wordSplit">分词统计</button>
-                    <button class="btn btn-primary mb-3" id="test1">测试1</button>
-                    <button class="btn btn-primary mb-3" id="test2">测试2</button>
+                    {#                    <button class="btn btn-primary mb-3" id="test1">测试1</button>#}
+                    {#                    <button class="btn btn-primary mb-3" id="test2">测试2</button>#}
                     <br>
                     <h1 align="center">
 
-                        数据汇总表预览
+                        {{ data_type }}汇总表预览
                     </h1>
-                    <table class="display" id="myTable" style="white-space: nowrap">
-                        <!--                                        <caption>data demo</caption>-->
+                    <table class="display" id="myTable" style="white-space: nowrap" aria-description="数据汇总展示">
+                        <caption>数据汇总展示</caption>
                         <thead>
+                        <tr>
+                            <th>字段1</th>
+                            <th>字21</th>
+                        </tr>
                         </thead>
                         <tbody>
                         </tbody>
@@ -157,200 +108,195 @@
             </div>
         </div>
     </div>
-</div>
+{% endblock %}
 
-
-<footer class="this-footer bg-secondary text-white text-center py-3 ">
-    <p>版权所有 &copy; 2023 信息学院</p>
-</footer>
-
-<script type="text/javascript">
-    $(document).ready(function () {
-        //var cachedData = localStorage.getItem('tableData');
-        //var initialData = cachedData ? JSON.parse(cachedData) : [];
-        let tableConfig = {
-            'debug': true,
-            'autoWidth': false,
-            'serverSide': true,
-            'searching': false,
-            'paging': true,
-            'lengthChange': false,
-            'info': false,
-            'deferRender': true,
-            'scrollY': "40vh",
-            'scrollX': true,
-            'scroller': {'loadingIndicator': true},
-            columns: [
-                {'title': "发布日期", 'data': "发布日期"},
-                {'title': "地区", 'data': "地区"},
-                {'title': "类型", 'data': "类型"},
-                {'title': "标题", 'data': "标题"},
-                {'title': "来源", 'data': "来源"},
-                {'title': "级别", 'data': "级别"}
-            ],
-        };
-        if (1) {
-            tableConfig.ajax = '/datas/updateTable'
-        } else {
-            tableConfig.serverSide = false;
-            tableConfig['data'] = initialData.data;
-        }
-        let table = $('#myTable').DataTable(tableConfig);
-        // console.log('271')
-        const updateTable = () => {
-            $.ajax({
-                url: '/datas/updateTable',
-                method: 'GET',
-                success: function (data) {
-                    // localStorage.setItem('tableData', JSON.stringify(data));
-                    // console.log(data);
-                    // console.log(table.rows);
-                    table.clear();
-                    table.rows.add(data);
-                    table.draw();
-                },
-                error: function (xhr, status, error) {
-                    console.error('Error fetching new data:', error);
-                }
-            });
-        };
-
-
-        $('#updateTable').on('click', function () {
-            updateTable();
-        });
-
-        $('#importData').on('click', function () {
-            $.ajax({
-                url: '/datas/handle_task',
-                method: 'GET',
-                data: {task_type: 'gov_data_import', task_params: ''},
-                success: function () {
-                    updateTable();
-                },
-                error: function (xhr, status, error) {
-                    console.error('Error fetching new data:', error);
-                }
-            });
-        });
-
-        $('#wordSplit').on('click', function () {
-            $.ajax({
-                url: '/datas/handle_task',
-                method: 'GET',
-                data: {task_type: 'word_split', task_params: ''},
-                success: function () {
-                    console.log('word split success')
-                },
-                error: function (xhr, status, error) {
-                    console.error('Error:', error);
-                }
-            });
-        });
-
-        $('#test1').on('click',function () {
-            $.ajax({
-                url: '/datas/handle_task',
-                method: 'GET',
-                data: {task_type: 'test1', task_params: ''},
-                success: function () {
-                    console.log('test1 success')
-                },
-                error: function (xhr, status, error) {
-                    console.error('Error:', error);
-                }
-            });
-        });
-        $('#test2').on('click',function () {
-            let obj={
-                'a':1,
-                'b':2
+{% block script %}
+    <script type="text/javascript">
+        $(document).ready(function () {
+            const dataTypeMeta = document.querySelector('meta[name="datatype"]');
+            console.log(dataTypeMeta)
+            const datatype = dataTypeMeta.getAttribute('content').toString()
+            console.log(datatype)
+            {#var rowHeight = $('#myTable').DataTable().row(1).node().clientHeight;#}
+            let tableConfig = {
+                'debug': true,
+                'autoWidth': false,
+                'serverSide': true,
+                'searching': false,
+                'paging': true,
+                'lengthChange': false,
+                'info': false,
+                'deferRender': true,
+                'scrollY': "calc(10 * 43px)",
+                'scrollX': true,
+                'scroller': {'loadingIndicator': true},
+                columns: [
+                    {'title': "发布日期", 'data': "发布日期"},
+                    {'title': "地区", 'data': "地区"},
+                    {'title': "类型", 'data': "类型"},
+                    {'title': "来源", 'data': "来源"},
+                    {'title': "级别", 'data': "级别"},
+                    {'title': "标题", 'data': "标题"},
+                ],
             };
-            let json_str=JSON.stringify(obj);
-            $.ajax({
-                url: '/datas/handle_task',
-                method: 'GET',
-                data: {task_type: 'test2', task_params: json_str},
-                success: function () {
-                    console.log('test2 success')
-                },
-                error: function (xhr, status, error) {
-                    console.error('Error:', error);
+
+            if (1) {
+                console.log(`/datas/${datatype}/updateTable`)
+                tableConfig.ajax = `/datas/${datatype}/updateTable`
+            } else {
+                tableConfig.serverSide = false;
+                tableConfig['data'] = initialData.data;
+            }
+            let table = $('#myTable').DataTable(tableConfig);
+            // console.log('271')
+            const updateTable = () => {
+                $.ajax({
+                    url: `/datas/${datatype}/updateTable`,
+                    method: 'GET',
+                    success: function (data) {
+                        // localStorage.setItem('tableData', JSON.stringify(data));
+                        // console.log(data);
+                        // console.log(table.rows);
+                        table.clear();
+                        table.rows.add(data);
+                        table.draw();
+                    },
+                    error: function (xhr, status, error) {
+                        console.error('Error fetching new data:', error);
+                    }
+                });
+            };
+            $('#myTable thead th').each(function () {
+                $(this).click(function () {
+                    var table = $('#myTable').DataTable();
+                    var column = table.column($(this).index());
+                    var order = column.order()[0] === 'asc' ? 'desc' : 'asc';
+                    column.order(order).draw();
+                });
+            });
+
+            $('#updateTable').on('click', function () {
+                updateTable();
+            });
+
+            $('#importData').on('click', function () {
+                $.ajax({
+                    url: `/datas/${datatype}/handle_task`,
+                    method: 'GET',
+                    data: {task_type: 'gov_data_import', task_params: ''},
+                    success: function () {
+                        updateTable();
+                    },
+                    error: function (xhr, status, error) {
+                        console.error('Error fetching new data:', error);
+                    }
+                });
+            });
+
+            $('#wordSplit').on('click', function () {
+                $.ajax({
+                    url: `/datas/${datatype}/handle_task`,
+                    method: 'GET',
+                    data: {task_type: 'word_split', task_params: ''},
+                    success: function () {
+                        console.log('word split success')
+                    },
+                    error: function (xhr, status, error) {
+                        console.error('Error:', error);
+                    }
+                });
+            });
+
+            $('#test2').on('click', function () {
+                let obj = {
+                    'a': 1,
+                    'b': 2
+                };
+                let json_str = JSON.stringify(obj);
+                $.ajax({
+                    url: `/datas/${datatype}/handle_task`,
+                    method: 'GET',
+                    data: {task_type: 'test2', task_params: json_str},
+                    success: function () {
+                        console.log('test2 success')
+                    },
+                    error: function (xhr, status, error) {
+                        console.error('Error:', error);
+                    }
+                });
+            });
+            const wordcloudDiv = document.getElementById('wordcloud');
+            const chart = echarts.init(wordcloudDiv);
+
+            const wordCloudOptions = {
+                series: [{
+                    type: 'wordCloud',
+                    shape: 'circle',
+                    gridSize: 20,
+                    sizeRange: [12, 50],
+                    rotationRange: [-90, 90],
+                    left: 'center',
+                    top: 'center',
+                    width: '70%',
+                    height: '80%',
+                    rotationStep: 45,
+                    drawOutOfBound: false,
+                    shrinkToFit: false,
+                    layoutAnimation: true,
+                    textStyle: {
+                        fontFamily: 'sans-serif',
+                        fontWeight: 'bold',
+                        color: function () {
+                            return 'rgb(' + [
+                                Math.round(Math.random() * 160),
+                                Math.round(Math.random() * 160),
+                                Math.round(Math.random() * 160)
+                            ].join(',') + ')';
+                        }
+                    },
+                    emphasis: {
+                        textStyle: {
+                            textShadowBlur: 10,
+                            textShadowColor: '#333'
+                        }
+                    },
+                    data: []
+                }]
+            };
+
+            const updateWordCloud = (data = []) => {
+                if (data.length) {
+                    wordCloudOptions.series[0].data = data;
+                }
+                chart.setOption(wordCloudOptions);
+                chart.resize();
+            };
+
+            const fetchWordFrequencyData = () => {
+                fetch(`/datas/${datatype}/wordCloud`, {method: 'GET'})
+                    .then(response => response.json())
+                    .then(data => {
+                        updateWordCloud(data.word_freq);
+                        console.log(data);
+
+                    })
+                    .catch(error => {
+                        console.error('Error fetching word frequency data:', error);
+                    });
+            };
+
+            fetchWordFrequencyData();
+
+            window.addEventListener('resize', function () {
+                chart.resize();
+            });
+
+            $('a[data-bs-toggle="pill"]').on('shown.bs.tab', function (e) {
+                if ($(e.target).attr('id') === 'v-pills-graph-tab') {
+                    updateWordCloud();
                 }
             });
         });
-        const wordcloudDiv = document.getElementById('wordcloud');
-        const chart = echarts.init(wordcloudDiv);
+    </script>
 
-        const wordCloudOptions = {
-            series: [{
-                type: 'wordCloud',
-                shape: 'circle',
-                gridSize: 20,
-                sizeRange: [12, 50],
-                rotationRange: [-90, 90],
-                left: 'center',
-                top: 'center',
-                width: '70%',
-                height: '80%',
-                rotationStep: 45,
-                drawOutOfBound: false,
-                shrinkToFit: false,
-                layoutAnimation: true,
-                textStyle: {
-                    fontFamily: 'sans-serif',
-                    fontWeight: 'bold',
-                    color: function () {
-                        return 'rgb(' + [
-                            Math.round(Math.random() * 160),
-                            Math.round(Math.random() * 160),
-                            Math.round(Math.random() * 160)
-                        ].join(',') + ')';
-                    }
-                },
-                emphasis: {
-                    textStyle: {
-                        textShadowBlur: 10,
-                        textShadowColor: '#333'
-                    }
-                },
-                data: []
-            }]
-        };
-
-        const updateWordCloud = (data = []) => {
-            if (data.length) {
-                wordCloudOptions.series[0].data = data;
-            }
-            chart.setOption(wordCloudOptions);
-            chart.resize();
-        };
-
-        const fetchWordFrequencyData = () => {
-            fetch('/datas/wordCloud', {method: 'GET'})
-                .then(response => response.json())
-                .then(data => {
-                    updateWordCloud(data.word_freq);
-                    console.log(data);
-
-                })
-                .catch(error => {
-                    console.error('Error fetching word frequency data:', error);
-                });
-        };
-
-        fetchWordFrequencyData();
-
-        window.addEventListener('resize', function () {
-            chart.resize();
-        });
-
-        $('a[data-bs-toggle="pill"]').on('shown.bs.tab', function (e) {
-            if ($(e.target).attr('id') === 'v-pills-graph-tab') {
-                updateWordCloud();
-            }
-        });
-    });
-</script>
-</body>
-</html>
+{% endblock %}

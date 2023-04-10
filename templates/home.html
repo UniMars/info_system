@@ -1,75 +1,13 @@
-{% load static %}
-<!DOCTYPE html>
-<html lang="zh">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>信息系统首页</title>
-    <!-- 引入Bootstrap CSS文件 -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" type="text/css" href="{% static 'css/style.css' %}">
-    <link rel="shortcut icon" type="image/x-icon" href="{% static 'image/favicon.ico' %}">
+{% extends 'base.html' %}
+{#{% load static %}#}
+{% block title %}信息系统首页{% endblock %}
+{% block head %}
 
-    <!-- 引入Bootstrap JS文件和其依赖项 -->
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.min.js"></script>
-
-<!-- 添加JavaScript代码用于实时更新时间 -->
-<script>
-    function updateCurrentTime() {
-        let currentTime = new Date();
-        let years = currentTime.getFullYear();
-        let month = currentTime.getMonth();
-        let day = currentTime.getDay();
-        let hours = currentTime.getHours();
-        let minutes = currentTime.getMinutes();
-        let seconds = currentTime.getSeconds();
-
-        // 为小时、分钟和秒添加前导零（如果需要）
-        month = (month < 10) ? '0' + month : month;
-        day = (day < 10) ? '0' + day : day;
-        hours = (hours < 10) ? '0' + hours : hours;
-        minutes = (minutes < 10) ? '0' + minutes : minutes;
-        seconds = (seconds < 10) ? '0' + seconds : seconds;
-
-        document.getElementById('current-time').innerHTML = "当前时间   " + years + "年" + month + "月" + day + "日  " + hours + ':' + minutes + ':' + seconds;
-    }
-
-    // 每秒更新一次时间
-    setInterval(updateCurrentTime, 1000);
-</script>
-</head>
-<body>
-
-<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-    <div class="container">
-        <a class="navbar-brand" href="/">信息系统</a>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
-                aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-        <div class="collapse navbar-collapse" id="navbarNav">
-            <ul class="navbar-nav">
-                <li class="nav-item">
-                    <a class="nav-link active" href="/">首页</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="/admin" target="_blank">管理员界面</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="/datas">数据展示</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="/report">报告展示</a>
-                </li>
-            </ul>
-        </div>
-    </div>
-</nav>
-<div class="container-fluid container-content p-0">
-
-    {#    <div class="row this-row">#}
+{% endblock %}
+{% block navbar %}
+{% include 'navbar.html' with active=0 %}
+{% endblock %}
+{% block content %}
     <div class=" col-right ">
         {#             col-md-10  p-0 #}
         <header class="bg-secondary text-white text-center py-3 mb-4">
@@ -88,33 +26,33 @@
                             <p class="card-text text-secondary">各省政府官网数据展示</p>
                         </div>
                         <div class="card-footer">
-                            <a href="/datas" class="btn btn-primary">查看详情</a>
+                            <a href="/datas/1" class="btn btn-primary">查看详情</a>
                         </div>
                     </div>
                 </div>
-                                <div class="col-md-4 mb-4">
-                    <div class="card h-100">
-                        <div class="card-body">
-                            <h5 class="card-title">微博数据展示</h5>
-                            <p class="card-text text-secondary">31省官方微博账号关键词数据</p>
-                        </div>
-                        <div class="card-footer">
-                            <a href="/datas" class="btn btn-primary">查看详情</a>
-                        </div>
-                    </div>
-                </div>
-                                <div class="col-md-4 mb-4">
+                <div class="col-md-4 mb-4">
                     <div class="card h-100">
                         <div class="card-body">
                             <h5 class="card-title">头条数据展示</h5>
                             <p class="card-text text-secondary">头条新闻数字经济数据</p>
                         </div>
                         <div class="card-footer">
-                            <a href="/datas" class="btn btn-primary">查看详情</a>
+                            <a href="/datas/2" class="btn btn-primary">查看详情</a>
                         </div>
                     </div>
                 </div>
-                                <div class="col-md-4 mb-4">
+                <div class="col-md-4 mb-4">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h5 class="card-title">微博数据展示</h5>
+                            <p class="card-text text-secondary">31省官方微博账号关键词数据</p>
+                        </div>
+                        <div class="card-footer">
+                            <a href="/datas/3" class="btn btn-primary">查看详情</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-4">
                     <div class="card h-100">
                         <div class="card-body">
                             <h5 class="card-title">管理员</h5>
@@ -139,14 +77,31 @@
             </div>
         </div>
     </div>
-    {#    </div>#}
+{% endblock %}
 
-</div>
-<footer class="this-footer bg-secondary text-white text-center py-3">
-    <p>版权所有 &copy; 2023 信息学院</p>
-</footer>
+{% block script %}
+    <script>
+        function updateCurrentTime() {
+            let currentTime = new Date();
+            let years = currentTime.getFullYear();
+            let month = currentTime.getMonth();
+            let day = currentTime.getDay();
+            let hours = currentTime.getHours();
+            let minutes = currentTime.getMinutes();
+            let seconds = currentTime.getSeconds();
 
+            // 为小时、分钟和秒添加前导零（如果需要）
+            month = (month < 10) ? '0' + month : month;
+            day = (day < 10) ? '0' + day : day;
+            hours = (hours < 10) ? '0' + hours : hours;
+            minutes = (minutes < 10) ? '0' + minutes : minutes;
+            seconds = (seconds < 10) ? '0' + seconds : seconds;
 
+            document.getElementById('current-time').innerHTML = "当前时间   " + years + "年" + month + "月" + day + "日  " + hours + ':' + minutes + ':' + seconds;
+        }
 
-</body>
-</html>
+        // 每秒更新一次时间
+        setInterval(updateCurrentTime, 1000);
+    </script>
+{% endblock %}
+
