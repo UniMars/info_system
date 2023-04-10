@@ -125,11 +125,12 @@ def read_wrong_result(output_file: str):
 
     for line in lines:
         try:
+            if not line.strip():
+                continue
             if "UID_" in line:
                 read_uids.append(int(line.strip()[4:]))
             else:
                 read_uids.append(int(line.strip()))
-            yield read_uids  # TODO
         except Exception as _:
             logger.error(f"READ ERROR:{_}")
             failed_read_uids.append(line.strip())
@@ -140,6 +141,7 @@ def read_wrong_result(output_file: str):
     else:
         with open(file=output_file, mode='w', encoding='utf-8') as f:
             f.write('')
+    return read_uids
 
 
 # 使用chunked方法分批获取数据库记录，避免一次性加载大量数据占用内存
@@ -169,21 +171,25 @@ def word_split():
 
         articles = GovDoc.objects.filter(is_split=False)
         # record_per_process = math.ceil(articles.count() / cpu_count)
-        iterator = articles.iterator(chunk_size=articles.count() // cpu_count + 1)
+        # iterator = articles.iterator(chunk_size=articles.count() // cpu_count + 1)
+        article_count = articles.count()
+        chunk_size = article_count // cpu_count + 1
+        chunks = [articles[i:i + chunk_size].iterator() for i in range(0, article_count, chunk_size)]
 
         thread = 0
-        for chunk in iterator:
+        for chunk in chunks:
             logger.debug(f"WORKER {thread} start")
             params = {
-                'model_list': chunk,
+                'model_list_iterator': chunk,
                 'tokenizer': tokenizer,
                 'stopwords': stopwords,
                 'stop_pattern': stop_pattern,
-                'worker': _
+                'worker': thread
             }
             future = executor.submit(word_split_multiprocess_task, **params)
             futures.append(future)
             futures_dict[str(thread)] = future
+            thread += 1
 
         results = []
         # 等待所有线程完成
@@ -195,61 +201,61 @@ def word_split():
                     break
             word_total_models = future.result()
             read_uids = read_wrong_result(output_file)
+            word_total_models.extend(read_uids)
 
             # 将uid按每批1000个进行划分
-            batch_size = 1000
+            batch_size = 10000
             uid_batches = [word_total_models[i:i + batch_size] for i in range(0, len(word_total_models), batch_size)]
             failed_uids = []  # 记录更新失败的uid
             for uid_batch in uid_batches:
                 word_aggr_updates = defaultdict(lambda: defaultdict(int))
-                for uid in uid_batch:
-                    model = GovDocWordFreq.objects.get(id=uid)
-                    word, freq, record_id = model.word, model.freq, model.record_id
-                    area = GovDoc.objects.get(id=record_id).area
-                    # TODO sql缓存 redis等缓存系统
-                    word_aggr_updates[word][area] += freq
-                    word_aggr_updates[word]['TOTAL'] += freq
-
-                # Prepare the list of objects to be updated
-                update_list = []
-                for word, freq_dict in word_aggr_updates.items():
-                    for area, freq in freq_dict.items():
-                        aggr_obj, created = GovDocWordFreqAggr.objects.get_or_create(word=word,
-                                                                                     area=area,
-                                                                                     defaults={'freq': 0})
-                        aggr_obj.freq += freq_dict[area]
-                        update_list.append(aggr_obj)
-
-                max_retries = cpu_count * 2 if cpu_count < 25 else 50
-                for retries in range(max_retries):
-                    # Perform the bulk update
-                    with transaction.atomic():
-                        try:
-                            GovDocWordFreqAggr.objects.bulk_update(update_list, ['freq'])
-                        except Exception as e:
-                            transaction.set_rollback(True)
-                            if retries == max_retries - 1:
-                                failed_uids.extend(uid_batch)
-                                logger.error(f"WordFreqAggr Updating:{e}")
+                try:
+                    for uid in uid_batch:
+                        model = GovDocWordFreq.objects.get(id=uid)
+                        word, freq, record_id = model.word, model.freq, model.record_id
+                        area = GovDoc.objects.get(id=record_id).area
+                        # TODO sql缓存 redis等缓存系统
+                        word_aggr_updates[word][area] += freq
+                        word_aggr_updates[word]['TOTAL'] += freq
+                    # Prepare the list of objects to be updated
+                    update_list = []
+                    for word, freq_dict in word_aggr_updates.items():
+                        for area, freq in freq_dict.items():
+                            aggr_obj, created = GovDocWordFreqAggr.objects.get_or_create(word=word,
+                                                                                         area=area,
+                                                                                         defaults={'freq': 0})
+                            aggr_obj.freq += freq_dict[area]
+                            update_list.append(aggr_obj)
+                except Exception as e:
+                    logger.error(f"WordFreqAggr Updating:{e}")
+                    failed_uids.extend(uid_batch)
+                    continue
+                else:
+                    max_retries = cpu_count * 2 if cpu_count < 25 else 50
+                    for retries in range(max_retries):
+                        # Perform the bulk update
+                        with transaction.atomic():
+                            try:
+                                GovDocWordFreqAggr.objects.bulk_update(update_list, ['freq'])
+                            except Exception as e:
+                                transaction.set_rollback(True)
+                                if retries == max_retries - 1:
+                                    failed_uids.extend(uid_batch)
+                                    logger.error(f"WordFreqAggr Updating:{e}")
+                                    break
+                            else:
+                                logger.debug("WordFreqAggr Updated")
                                 break
-                        else:
-                            logger.debug("WordFreqAggr Updated")
-                            break
                             # 更新失败，将失败的uid记录下来
                 # 将更新失败的uid写入到result.txt中
-                if failed_uids:
-                    with open(file=output_file, mode='a', encoding='utf-8') as f:
-                        f.write('\n'.join(str(uid) for uid in failed_uids))
-                del word_aggr_updates
-                del uid_batch
-                del uid_batches
-            del word_total_models
-            gc.collect()
+            if failed_uids:
+                with open(file=output_file, mode='a', encoding='utf-8') as f:
+                    f.write('\n'.join(str(uid) for uid in failed_uids))
         logger.info("----------All Thread finished----------")
         return "分词结束"
 
 
-def word_split_multiprocess_task(model_list_generator,
+def word_split_multiprocess_task(model_list_iterator,
                                  tokenizer: Union[jieba.Tokenizer, 'jieba_fast.Tokenizer'] = None,
                                  stopwords: Union[set, list] = None,
                                  stop_pattern: re.compile = re.compile(r'\s'),
@@ -267,9 +273,11 @@ def word_split_multiprocess_task(model_list_generator,
     # with connection.cursor() as _:
 
     word_total_models = []
-    for model_list in model_list_generator:
-        for article in model_list:
+    gc_count = 0
+    try:
+        for article in model_list_iterator:
             # 分词并词频统计
+            # time1=time.time()
             word_freq = defaultdict(int)
             for word in tokenizer.cut(article.content):
                 # 去除停用词和数字,标点符号,并转换为小写
@@ -278,34 +286,38 @@ def word_split_multiprocess_task(model_list_generator,
                 word = word if not word.isalpha() else word.lower()
                 # 词频统计
                 word_freq[word] += 1
-
+            # time2=time.time()
+            # logger.debug(f"ARTICLE: {article.id} jieba cost {time2-time1}")
+            # time3=time.time()
             # 保存词频统计结果写入数据表
             word_model_list = []
-            unique_word_models = set()
             for word, freq in word_freq.items():
-                if (word, article.id) in unique_word_models:
-                    continue
                 uid = generate_id(word, article.id)
                 if GovDocWordFreq.objects.filter(id=uid).exists():
                     continue
                 else:
                     word_freq_model = GovDocWordFreq(id=uid, word=word, freq=freq, record=article)
                     word_model_list.append(word_freq_model)
-                    unique_word_models.add((word, article.id))
                     word_total_models.append(uid)
-            del unique_word_models
-            try:
-                with transaction.atomic():
-                    if word_model_list:
-                        GovDocWordFreq.objects.bulk_create(word_model_list)
-                    article.is_split = True
-                    article.save(update_fields=['is_split'])
-                    logger.debug(f"article:{article.id} save success with WORKER:{worker}")
-            except Exception as e:
-                logger.error(f"bulk transaction error:{e} with WORKER:{worker}")
-            finally:
-                # 销毁word_model_list
-                del word_model_list
+            # time4 = time.time()
+            # logger.debug(f"ARTICLE: {article.id} convert cost {time4 - time3}")
+            # time5 = time.time()
+            with transaction.atomic():
+                if word_model_list:
+                    GovDocWordFreq.objects.bulk_create(word_model_list)
+                article.is_split = True
+                article.save(update_fields=['is_split'])
+                # time6 = time.time()
+                # logger.debug(f"ARTICLE: {article.id} save cost {time6 - time5}")
+                logger.debug(f"article:{article.id} save success with WORKER:{worker}")
+            del word_model_list
             del word_freq
-        gc.collect()
+    except Exception as e:
+        logger.error(f"bulk transaction error:{e} with WORKER:{worker}")
+    finally:
+        gc_count += 1
+        if gc_count == 500:
+            gc_count = 0
+            gc.collect()
+            # 销毁word_model_list
     return word_total_models
