@@ -48,7 +48,8 @@ def convert_std_table(res_list: list):
             content = res_list[j + 1][i]
             # content 类型判断和清洗
             if isinstance(content, str):
-                content = re.sub('[\u2002\u2003\u3000\u200b\u200d\xa0\x7f]', ' ', content)
+                content = re.sub('[\u2002\u2003\u3000\u200b\u200c\u200d\u206c\xa0\x7f]', ' ', content)
+                content = content.replace('\xad', '')
                 content = content.strip()
             try:
                 d[header[i].strip()] = content
