@@ -49,9 +49,9 @@
                         <a class="nav-link link-dark" id="v-pills-graph-tab" data-bs-toggle="pill"
                            href="#v-pills-graph" role="tab" aria-controls="v-pills-graph" aria-selected="false">
                             <svg class="bi me-2" width="16" height="16">
-                                <use xlink:href="#speedometer2"></use>
+                                <use xlink:href="#cloud"></use>
                             </svg>
-                            图表
+                            词云
                         </a>
                     </li>
                 </ul>
@@ -92,18 +92,17 @@
                     <table class="display" id="myTable" style="white-space: nowrap" aria-description="数据汇总展示">
                         <caption>数据汇总展示</caption>
                         <thead>
-                        <tr>
-                            <th>字段1</th>
-                            <th>字21</th>
-                        </tr>
                         </thead>
                         <tbody>
                         </tbody>
                     </table>
                 </div>
-                <div class="tab-pane fade" id="v-pills-graph" role="tabpanel" aria-labelledby="v-pills-graph-tab"
-                     style="width: 100% ;height: 100%">
-                    <div id="wordcloud" style="width: 100%; height: 100%;"></div>
+                <div class="tab-pane fade w-100 h-100" id="v-pills-graph" role="tabpanel" aria-labelledby="v-pills-graph-tab"
+{#                     style="width: 100% ;height: 100%"#}
+                >
+                    <div id="wordcloud" class=" w-50 h-50 top-50 start-50 translate-middle"
+{#                         style="width: 100vh; height: 60vh;"#}
+                    ></div>
                 </div>
             </div>
         </div>
@@ -227,22 +226,29 @@
             });
             const wordcloudDiv = document.getElementById('wordcloud');
             const chart = echarts.init(wordcloudDiv);
+            {#console.log(chart)#}
+            var maskImage = new Image();
 
             const wordCloudOptions = {
+                tooltip: {},
                 series: [{
                     type: 'wordCloud',
                     shape: 'circle',
-                    gridSize: 20,
+                    maskImage: maskImage,
+                    gridSize: 8,
                     sizeRange: [12, 50],
                     rotationRange: [-90, 90],
                     left: 'center',
                     top: 'center',
-                    width: '70%',
-                    height: '80%',
+                    {#right: null,#}
+                    {#bottom: null,#}
+                    width: '100%',
+                    height: '100%',
                     rotationStep: 45,
                     drawOutOfBound: false,
-                    shrinkToFit: false,
+                    shrinkToFit: true,
                     layoutAnimation: true,
+                    keepAspect: true,
                     textStyle: {
                         fontFamily: 'sans-serif',
                         fontWeight: 'bold',
@@ -263,6 +269,8 @@
                     data: []
                 }]
             };
+            maskImage.src = "{% static 'image/cloud.png' %}"
+            {#maskImage.src = "{% static 'image/logo.png' %}"#}
 
             const updateWordCloud = (data = []) => {
                 if (data.length) {

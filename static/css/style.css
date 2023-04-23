@@ -12,10 +12,11 @@ header {
     margin-bottom: 0;
 }
 
-.this-dropdown{
+.this-dropdown {
     height: 16%;
-margin-bottom: 0;
+    margin-bottom: 0;
 }
+
 .container-content {
     margin-left: 0;
     margin-right: 0;
@@ -26,7 +27,7 @@ margin-bottom: 0;
 
 .this-row {
     height: 100%;
-    width:100%;
+    width: 100%;
 }
 
 .this-sidebar {
@@ -38,6 +39,9 @@ margin-bottom: 0;
 .col-right {
     margin: 0;
 }
-.this-footer{
-    margin: 0;
+
+.this-footer {
+    position: fixed;
+    bottom: 0;
+    width: 100%;
 }
