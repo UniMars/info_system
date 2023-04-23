@@ -1,4 +1,5 @@
 import hashlib
+import re
 
 
 def generate_id(word: str, record_id: int):
@@ -16,3 +17,10 @@ def generate_id(word: str, record_id: int):
     id_63_bits = id_64_bits & 0x7FFFFFFFFFFFFFFF
 
     return id_63_bits
+
+
+def data_cleaning(content):
+    content = re.sub('[\u2002\u2003\u3000\u200b\u200c\u200d\u206c\xa0\x7f]', ' ', content)
+    content = content.replace('\xad', '')
+    content = content.strip()
+    return content
