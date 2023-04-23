@@ -1,13 +1,14 @@
 import csv
+import datetime
 import json
 import os
-import re
 import shutil
+from datetime import date, datetime
 
 import chardet
 import pandas as pd
-import datetime
-from datetime import date, datetime
+
+from utils.utils import data_cleaning
 
 
 class LoadDatetime(json.JSONEncoder):
@@ -48,9 +49,7 @@ def convert_std_table(res_list: list):
             content = res_list[j + 1][i]
             # content 类型判断和清洗
             if isinstance(content, str):
-                content = re.sub('[\u2002\u2003\u3000\u200b\u200c\u200d\u206c\xa0\x7f]', ' ', content)
-                content = content.replace('\xad', '')
-                content = content.strip()
+                content = data_cleaning(content)
             try:
                 d[header[i].strip()] = content
             except Exception as _:
