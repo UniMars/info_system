@@ -104,7 +104,7 @@ def wordcloud(request, data_id):
     if data_id != 1:
         return JsonResponse({'word_freq': [{'name': '@TEST@', 'value': 1}]})
     logger.info('wordcloud start')
-    aggregated_words = GovDocWordFreqAggr.objects.filter(area='TOTAL').order_by('-freq')[:1000]
+    aggregated_words = GovDocWordFreqAggr.objects.filter(area='TOTAL').order_by('-freq')[:500]
     word_freq = [{'name': word.word, 'value': word.freq} for word in aggregated_words]
     context = {'word_freq': word_freq}
     logger.info('wordcloud end')
