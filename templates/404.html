@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>404 Not Found</title>
+{#	<meta http-equiv="refresh" content="5;url=/">#}
+</head>
+<body>
+	<h1>404 Not Found</h1>
+    <p href="/">页面不存在，将会在<span id="countdown">2</span>秒后自动跳转...</p>
+	<script>
+  let timeLeft = 2;
+  setInterval(() => {
+    timeLeft--;
+    if (timeLeft <= 0) {
+      window.location.href = "/";
+    } else {
+      document.getElementById('countdown').innerHTML = timeLeft;
+    }
+  }, 1000);
+	</script>
+</body>
+</html>

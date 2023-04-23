@@ -1,249 +1,111 @@
 # -*- coding: utf-8 -*-
-import concurrent.futures
 import logging
-import math
-# import multiprocessing
-import os
-import re
 
-import jieba
-import pandas as pd
-from django.conf import settings
+from django.core.cache import cache
+# import multiprocessing
+
 from django.core.paginator import Paginator
-from django.db import connections, transaction
-from django.db.models import Sum
-from django.http import HttpResponse, JsonResponse
-from django.shortcuts import render
+from django.http import JsonResponse, HttpResponseNotFound
+from django.shortcuts import render, get_object_or_404
 from django.views.decorators.cache import cache_page
 
-from utils.json_load import json_load
-from .models import GovDoc, GovDocWordFreq, GovDocWordFreqAggr
+from .models import GovDoc, GovDocWordFreqAggr, DataType
+from .tasks import gov_data_import, word_split
 
 logger = logging.getLogger('django')
 
 
 # Create your views here.
-def index(response):
-    # return
-    return render(response, 'dataDemo.html')
-
-
-def data_import(response, filepath: str = r"D:\Programs\Code\python\projects\info_system\DATA\政府网站数据\数据汇总"):
-    logger.info("政府汇总数据导入中")
+def index(response, data_id):
     try:
-        data_json = json_load(filepath)
-        area_pattern = re.compile(r'[^\d-]+')
-        # time_pattern = re.compile(r'\W*\d{4}年\d+月\d{1,2}日\W*')
-
-        for name_key, value_list in data_json.items():
-            logger.debug(f"读取文件：{name_key}")
-            # 匹配地区名
-            match_res = area_pattern.search(name_key)
-            if match_res and match_res.group()[-2:] == "文件":
-                area = match_res.group()[:-2]
-            else:
-                logger.error('地区名称读取失败')
-                area = ''
-                # raise ValueError("地区名称读取失败")
-
-            key_map = {
-                'link': ['link', '链接', 'url', 'pagelink_id'],
-                'title': ['title', '标题'],
-                'content': ['正文内容'],
-                'pub_date': ['发布日期'],
-                'source': ['department', '来源'],
-                'level': ['级别'],
-                'types': ['类别', '文件类型', 'type', '新闻类型', '类型']
-            }
-
-            for item in value_list:
-                result = {
-                    'link': '',
-                    'title': '',
-                    'content': '',
-                    'pub_date': None,
-                    'source': '',
-                    'level': '',
-                    'types': ''
-                }
-                for map_key, alternatives in key_map.items():
-                    if map_key == 'types':
-                        for alt_key in alternatives:
-                            if alt_key in item:
-                                result[map_key] += str(item[alt_key]) + ' '
-                    else:
-                        for alt_key in alternatives:
-                            if alt_key in item:
-                                result[map_key] = str(item[alt_key])
-                                # if map_key not in ['pub_date'] else item[alt_key]
-                                break
-                    result[map_key] = result[map_key].strip()
-
-                # 处理发布日期
-                if result['pub_date']:
-                    timestring = result['pub_date']
-                    temp_date = pd.to_datetime(timestring, errors='coerce')
-                    if temp_date is pd.NaT:
-                        temp_date = pd.to_datetime(timestring, format="%Y年%m月%d日", errors='coerce')
-                    temp_date = temp_date if temp_date is not pd.NaT else None
-                    result['pub_date'] = temp_date
-                else:
-                    result['pub_date'] = None
-
-                types = result['types']
-                link = result['link'][:2000]
-                title = result['title'][:500]
-                content = result['content'][:10000]
-                pub_date = result['pub_date']
-                source = result['source'][:50]
-                level = result['level']
-                if GovDoc.objects.filter(area=area, title=title).exists():
-                    continue
-                if pub_date and not GovDoc.objects.filter(area=area, title=title, pub_date=pub_date).exists():
-                    update_fields = {
-                        'area': area, 'types': types, 'link': link,
-                        'title': title, 'content': content,
-                        'pub_date': pub_date, 'source': source,
-                        'level': level
-                    }
-                    data_model = GovDoc(**update_fields)
-                else:
-                    update_fields = {
-                        'area': area, 'types': types, 'link': link,
-                        'title': title, 'content': content, 'source': source,
-                        'level': level
-                    }
-                    data_model = GovDoc(**update_fields)
-                data_model.save()
-        logger.info("政府汇总数据读取写入完成")
-        return HttpResponse("写入完成")
+        data_type = get_object_or_404(DataType, pk=data_id)
+        context = {"data_type": data_type}
+        logger.info(f"Data type: {data_type}")
     except Exception as e:
-        logging.error(f"ERROR:{e}")
-        # print(response)
-    return JsonResponse({'info': "数据汇总表写入完成", 'response': str(response)})
+        logger.error(e)
+        return render(response, '404.html', status=404)
+    else:
+        return render(response, 'dataDemo.html', context)
 
 
-def table_update(request):
-    try:
-        draw = int(request.GET.get('draw', 1))
-        start = int(request.GET.get('start', 0))
-        length = int(request.GET.get('length', 10))
-        # search_value = request.GET.get('search[value]', '')
-        queryset = GovDoc.objects.all().order_by('-pub_date')
-        total_records = queryset.count()
+def handle_task_request(request, data_id):
+    if data_id != 1:
+        return
+    task_type = request.GET.get('task_type')
+    task_params = request.GET.get('task_params')
+    logger.info(f"task_type:{task_type}, task_params:{task_params}")
 
-        paginator = Paginator(queryset, length)
-        page_number = (start // length) + 1
-        data = [{'发布日期': obj.pub_date, '地区': obj.area, '类型': obj.types, '标题': obj.title, '链接': obj.link,
-                 '正文': obj.content}
-                for obj in paginator.get_page(page_number)]
-        response = {'draw': draw, 'recordsTotal': total_records, 'recordsFiltered': total_records, 'data': data}
-        return JsonResponse(response)
-    except Exception as e:
-        data = {'request': request}
-        logger.error(f"TABLE UPDATE ERROR:{e}")
-        return JsonResponse(data, safe=False)
+    if task_type == 'gov_data_import':
+        message = gov_data_import()
+        code = 200 if message == "success" else 404
+        result = {'code': code, 'message': message}
+    elif task_type == 'word_split':
+        message = word_split()
+        code = 200 if message == "success" else 404
+        result = {'code': code, 'message': message}
+    else:
+        result = {'code': 404, 'message': 'Invalid task type'}
 
-
-def word_split(request):
-    logger.info("start word splitting")
-    articles = GovDoc.objects.filter(is_split=False)
-    # 加载停用词
-    stopwords = []
-    stopwords_file_path = os.path.join(settings.STATIC_ROOT, 'stopwords.txt')
-    with open(stopwords_file_path, 'r', encoding='utf-8') as f:
-        for line in f:
-            stopwords.append(line.strip())
-    # cpu_count = multiprocessing.cpu_count()
-    cpu_count = 16
-    all_records = articles.count()
-    record_per_process = math.ceil(all_records / cpu_count)
-    # pool = multiprocessing.Pool(processes=cpu_count)
-    # for _ in range(cpu_count):
-    #     start = _ * record_per_process
-    #     end = (_ + 1) * record_per_process
-    #     model_list = articles[start:end]
-    #     pool.apply_async(word_split_multiprocess_task, args=(model_list, stopwords))
-    #     print(f"multiprocess {_} start\n")
-    # pool.close()
-    # pool.join()
-
-    # 使用ThreadPoolExecutor替代multiprocessing.Pool
-    with concurrent.futures.ThreadPoolExecutor(max_workers=cpu_count) as executor:
-        futures = []
-        for _ in range(cpu_count):
-            start = _ * record_per_process
-            end = (_ + 1) * record_per_process
-            model_list = articles[start:end]
-            future = executor.submit(word_split_multiprocess_task, model_list, stopwords)
-            futures.append(future)
-            logger.debug(f"thread {_} start")
-
-        # 等待所有线程完成
-        for future in concurrent.futures.as_completed(futures):
-            try:
-                future.result()
-            except Exception as e:
-                logger.error(f"Word splitting Writing:{e}")
-    logger.info("----------All Thread finished----------")
-    # articles.update(is_split=True)
-    # print(request)
-    return HttpResponse("分词中")
-
-
-def word_split_multiprocess_task(model_list, stopwords):
-    # 获取默认数据库的连接
-    connection = connections['default']
-    # 关闭连接并确保重新建立连接
-    connection.close()
-    connection.ensure_connection()
-
-    # 使用游标执行原生SQL查询
-    with connection.cursor() as _:
-        stop_pattern = re.compile(r'[\s\d\u2002\u2003\u3000\xa0二三四五六七八九]')
-        for article in model_list:
-            with transaction.atomic():
-                # 分词并词频统计
-                word_freq = {}
-                for word in jieba.cut(article.content):
-                    # if len(word) == 1:
-                    #     continue
-                    # 去除停用词和数字,标点符号
-                    if word in stopwords or stop_pattern.search(word):
-                        continue
-                    word_freq[word] = word_freq.get(word, 0) + 1
-                word_model_list = []
-                unique_word_models = set()
-                for word, freq in word_freq.items():
-                    if (word, article.id) in unique_word_models or GovDocWordFreq.objects.filter(word=word,
-                                                                                                 record=article).exists():
-                        continue
-                    else:
-                        word_freq_model = GovDocWordFreq(word=word, freq=freq, record=article)
-                        area = GovDoc.objects.get(id=article.id).area
-                        word_total_model = GovDocWordFreqAggr.objects.get_or_create(word=word, area='TOTAL')[0]
-                        word_area_model = GovDocWordFreqAggr.objects.get_or_create(word=word, area=area)[0]
-                        word_total_model.freq += freq
-                        word_area_model.freq += freq
-                        word_total_model.save()
-                        word_area_model.save()
-                        word_model_list.append(word_freq_model)
-                        unique_word_models.add((word, article.id))
-                if len(word_model_list):
-                    GovDocWordFreq.objects.bulk_create(word_model_list)
-                article.is_split = True
-                article.save()
-                logger.debug(f"article {article.id} saved")
+    return JsonResponse(result)
 
 
 @cache_page(7200)
-def wordcloud(request):
+def table_update(request, data_id):
+    data = {'update': False}
+    if data_id == 1:
+        order_column_dict = {
+            '0': "pub_date",
+            '1': "area",
+            '2': "types",
+            '3': "source",
+            '4': "level",
+            '5': "title",
+        }
+        try:
+            draw = int(request.GET.get('draw', 1))
+            start = int(request.GET.get('start', 0))
+            length = int(request.GET.get('length', 10))
+            order_column = request.GET.get('order[0][column]')
+            order_direction = request.GET.get('order[0][dir]')
+            order_column_str = order_column_dict[order_column]
+            # search_value = request.GET.get('search[value]', '')
+            queryset = cache.get('gov_doc_total')
+            if not queryset:
+                queryset = GovDoc.objects.all().order_by('-pub_date')[:1000]
+                cache.set('gov_doc_total', queryset, 7200)
+            sorted_queryset = sorted(queryset, key=lambda x: getattr(x, order_column_str),
+                                     reverse=True if order_direction == 'desc' else False)
+
+            total_records = len(sorted_queryset)
+            page_number = (start // length) + 1
+            data = [{'发布日期': obj.pub_date,
+                     '地区': obj.area,
+                     '类型': obj.types,
+                     '标题': obj.title,
+                     '来源': obj.source,
+                     '级别': obj.level, }
+                    for obj in sorted_queryset[(page_number - 1) * length:page_number * length]]
+            response = {'draw': draw, 'recordsTotal': total_records, 'recordsFiltered': total_records, 'data': data}
+            return JsonResponse(response)
+        except Exception as e:
+            logger.error(f"TABLE UPDATE ERROR:{e}")
+            return JsonResponse(data, safe=False)
+    elif data_id == 2:
+        return JsonResponse(data, safe=False)
+    elif data_id == 3:
+        return JsonResponse(data, safe=False)
+    else:
+        logger.error(f"TABLE UPDATE ERROR:")
+        return JsonResponse(data, safe=False)
+
+
+@cache_page(7200)
+def wordcloud(request, data_id):
+    if data_id != 1:
+        return JsonResponse({'word_freq': [{'name': '@TEST@', 'value': 1}]})
     logger.info('wordcloud start')
-    # aggregated_words = GovDocWordFreq.objects.values('word').annotate(total_freq=Sum('freq')).order_by('-total_freq')[:1000]
-    aggregated_words = GovDocWordFreqAggr.objects.filter(area='TOTAL').order_by('-freq')[:1000]
-    # print(len(aggregated_words))
-    word_freq = [{'name': word['word'], 'value': word['total_freq']} for word in aggregated_words]
-    # word_freq = word_freq[:1000]
+    aggregated_words = GovDocWordFreqAggr.objects.filter(area='TOTAL').order_by('-freq')[:500]
+    word_freq = [{'name': word.word, 'value': word.freq} for word in aggregated_words]
     context = {'word_freq': word_freq}
     logger.info('wordcloud end')
     return JsonResponse(context)

@@ -2,12 +2,13 @@ import csv
 import datetime
 import json
 import os
-import re
+import shutil
 from datetime import date, datetime
 
 import chardet
-import numpy as np
 import pandas as pd
+
+from utils.utils import data_cleaning
 
 
 class LoadDatetime(json.JSONEncoder):
@@ -48,8 +49,7 @@ def convert_std_table(res_list: list):
             content = res_list[j + 1][i]
             # content 类型判断和清洗
             if isinstance(content, str):
-                content = re.sub('[\u2002\u2003\u3000\xa0]', ' ', content)
-                content = content.strip()
+                content = data_cleaning(content)
             try:
                 d[header[i].strip()] = content
             except Exception as _:
@@ -58,7 +58,7 @@ def convert_std_table(res_list: list):
     return res_dict
 
 
-def json_load(path='.\\DATA\\政府网站数据\\数据汇总'):
+def load_forms(path: str, if_move=False):
     res = {}
     for root, dirs, files in os.walk(path):
         for file in files:
@@ -79,13 +79,18 @@ def json_load(path='.\\DATA\\政府网站数据\\数据汇总'):
             elif dir_str.endswith(".xlsx") or dir_str.endswith(".xls"):
                 print(dir_str)
                 data = pd.read_excel(dir_str)
-                result = [data.columns.values.tolist()] + np.array(data).tolist()
+                # # 填充缺失值为 0
+                # data.fillna('', inplace=True)
+                # # 将数据类型强制转换为 float
+                # data = data.astype(str)
+                result = [data.columns.tolist()] + data.to_numpy().tolist()
                 result_dict = convert_std_table(result)
                 res[file.split(".xls")[0]] = result_dict
-    return res
 
-# print("生成json文件中")
-# with open("D:/zl/res_数据汇总.json", "w") as f:
-#     json.dump(res, f, cls=LoadDatetime)
-# print("Done!")
-# test()
+            # move file to move_path
+            if if_move:
+                move_path = os.path.join(root, '/processed')
+                if not os.path.exists(move_path):
+                    os.makedirs(move_path)
+                shutil.move(os.path.join(root, file), move_path)
+    return res
