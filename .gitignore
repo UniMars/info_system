@@ -3,7 +3,6 @@
 /staticfiles/
 .git/
 /.idea/
-**/migrations/
 **/__pycache__/
 /templates/test.html
 test.py
