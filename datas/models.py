@@ -48,7 +48,7 @@ class DataType(models.Model):
 # 地区关键词
 class Area(models.Model):
     name = models.CharField(unique=True, max_length=50)
-    level=models.IntegerField(default=0)
+    level = models.IntegerField(default=0)
 
     def __str__(self):
         return self.name
@@ -124,3 +124,33 @@ class ToutiaoDocWordFreqAggr(models.Model):
 
     class Meta:
         unique_together = ('word', 'area')
+
+
+class WeiboDoc(models.Model):
+    time = models.DateTimeField(null=True, blank=True)
+    month = models.DateTimeField(null=True, blank=True)
+    mblogurl = models.CharField(max_length=2000)
+    mid = models.IntegerField(max_length=100)
+    user_id = models.CharField(max_length=100)
+    user_name = models.CharField(max_length=100)
+    source = models.CharField(max_length=100)
+    user_gender = models.CharField(max_length=10)
+    user_statuses_count = models.IntegerField(max_length=100)
+    user_followers_count = models.CharField(max_length=100)
+    user_follow_count = models.CharField(max_length=100)
+    user_verified = models.BooleanField()
+    user_verified_type = models.IntegerField(max_length=10)
+    user_verified_reason = models.CharField(max_length=1000)
+    user_urank = models.IntegerField(max_length=50)
+    location = models.CharField(max_length=1000)
+    content = models.CharField(max_length=20000)
+    length = models.IntegerField(max_length=100)
+    is_splmt = models.IntegerField(max_length=100)
+    splmt_type = models.CharField(max_length=100)
+    splmt_title = models.CharField(max_length=500)
+    splmt_url = models.CharField(max_length=1000)
+    urls_num = models.IntegerField(max_length=50)
+    reposts_count = models.IntegerField(max_length=50)
+    comments_count = models.IntegerField(max_length=50)
+    attitudes_count = models.IntegerField(max_length=50)
+    pic_num = models.IntegerField(max_length=50)
