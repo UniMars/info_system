@@ -126,7 +126,7 @@ class ToutiaoDocWordFreqAggr(models.Model):
         unique_together = ('word', 'area')
 
 
-class DataProvince(models.Model):
+class WeiboDoc(models.Model):
     time = models.DateTimeField(null=True, blank=True)
     month = models.DateTimeField(null=True, blank=True)
     mblogurl = models.CharField(max_length=2000)
