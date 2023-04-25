@@ -11,6 +11,9 @@ class TestModel(models.Model):
     name = models.CharField(max_length=50, default='test_name')
     age = models.IntegerField(default=0)
 
+    class Meta:
+        app_label = 'datas'  # 应用程序名称
+
     def save(self, *args, **kwargs):
         print('save!!!')
         if not self.id:
@@ -32,6 +35,9 @@ def set_id(sender, instance, **kwargs):
 class KeyWord(models.Model):
     keyword = models.CharField(unique=True, max_length=50)
 
+    class Meta:
+        app_label = 'datas'  # 应用程序名称
+
     def __str__(self):
         return self.keyword
 
@@ -41,6 +47,9 @@ class DataType(models.Model):
     id = models.BigIntegerField(primary_key=True, editable=False)
     name = models.CharField(max_length=50)
 
+    class Meta:
+        app_label = 'datas'  # 应用程序名称
+
     def __str__(self):
         return self.name
 
@@ -49,6 +58,9 @@ class DataType(models.Model):
 class Area(models.Model):
     name = models.CharField(unique=True, max_length=50)
     level = models.IntegerField(default=0)
+
+    class Meta:
+        app_label = 'datas'  # 应用程序名称
 
     def __str__(self):
         return self.name
@@ -67,6 +79,7 @@ class GovDoc(models.Model):
 
     class Meta:
         unique_together = ('area', 'title', 'pub_date')
+        app_label = 'datas'  # 应用程序名称
 
 
 class GovDocWordFreq(models.Model):
@@ -78,6 +91,7 @@ class GovDocWordFreq(models.Model):
 
     class Meta:
         unique_together = ('word', 'record_id')
+        app_label = 'datas'  # 应用程序名称
 
 
 class GovDocWordFreqAggr(models.Model):
@@ -88,6 +102,7 @@ class GovDocWordFreqAggr(models.Model):
 
     class Meta:
         unique_together = ('word', 'area')
+        app_label = 'datas'  # 应用程序名称
 
 
 class ToutiaoDoc(models.Model):
@@ -103,6 +118,7 @@ class ToutiaoDoc(models.Model):
 
     class Meta:
         unique_together = ('area', 'title', 'pub_date')
+        app_label = 'datas'  # 应用程序名称
 
 
 class ToutiaoDocWordFreq(models.Model):
@@ -114,6 +130,7 @@ class ToutiaoDocWordFreq(models.Model):
 
     class Meta:
         unique_together = ('word', 'record_id')
+        app_label = 'datas'  # 应用程序名称
 
 
 class ToutiaoDocWordFreqAggr(models.Model):
@@ -124,12 +141,12 @@ class ToutiaoDocWordFreqAggr(models.Model):
 
     class Meta:
         unique_together = ('word', 'area')
+        app_label = 'datas'  # 应用程序名称
 
 
 class WeiboDoc(models.Model):
-    city =models.CharField(max_length=100)
-    time = models.DateTimeField(null=True, blank=True)
-    month = models.DateTimeField(null=True, blank=True)
+    city = models.CharField(max_length=200)
+    time = models.CharField(null=True, blank=True, max_length=100)
     mblogurl = models.CharField(max_length=2000)
     mid = models.IntegerField()
     user_id = models.CharField(max_length=100)
@@ -155,3 +172,6 @@ class WeiboDoc(models.Model):
     comments_count = models.IntegerField()
     attitudes_count = models.IntegerField()
     pic_num = models.IntegerField()
+
+    class Meta:
+        app_label = 'datas'  # 应用程序名称
