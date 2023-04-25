@@ -35,7 +35,7 @@ class LoadDatetime(json.JSONEncoder):
             return json.JSONEncoder.default(self, obj)
 
 
-def convert_std_table(res_list: list):
+def convert_to_dict(res_list: list):
     """
     将csv文件读取的结果转换为字典
     :param res_list: 一个包含若干个嵌套列表的列表，其中第一个列表包含表头，随后列表包含具体数据
@@ -73,7 +73,7 @@ def load_forms(path: str, if_move=False):
                         result = list(reader)
                 except Exception as e:
                     print(e)
-                result_dict = convert_std_table(result)
+                result_dict = convert_to_dict(result)
                 res[file.split(".csv")[0]] = result_dict
 
             elif dir_str.endswith(".xlsx") or dir_str.endswith(".xls"):
@@ -84,7 +84,7 @@ def load_forms(path: str, if_move=False):
                 # # 将数据类型强制转换为 float
                 # data = data.astype(str)
                 result = [data.columns.tolist()] + data.to_numpy().tolist()
-                result_dict = convert_std_table(result)
+                result_dict = convert_to_dict(result)
                 res[file.split(".xls")[0]] = result_dict
 
             # move file to move_path
