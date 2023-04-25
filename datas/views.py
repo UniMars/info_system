@@ -2,15 +2,14 @@
 import logging
 
 from django.core.cache import cache
-# import multiprocessing
-
-from django.core.paginator import Paginator
-from django.http import JsonResponse, HttpResponseNotFound
+from django.http import JsonResponse
 from django.shortcuts import render, get_object_or_404
 from django.views.decorators.cache import cache_page
 
 from .models import GovDoc, GovDocWordFreqAggr, DataType
 from .tasks import gov_data_import, word_split
+
+# import multiprocessing
 
 logger = logging.getLogger('django')
 
@@ -95,17 +94,44 @@ def table_update(request, data_id):
     elif data_id == 3:
         return JsonResponse(data, safe=False)
     else:
-        logger.error(f"TABLE UPDATE ERROR:")
+        logger.error("TABLE UPDATE ERROR: Invalid data_id")
         return JsonResponse(data, safe=False)
 
 
-@cache_page(7200)
+# @cache_page(7200)
 def wordcloud(request, data_id):
     if data_id != 1:
         return JsonResponse({'word_freq': [{'name': '@TEST@', 'value': 1}]})
-    logger.info('wordcloud start')
-    aggregated_words = GovDocWordFreqAggr.objects.filter(area='TOTAL').order_by('-freq')[:500]
-    word_freq = [{'name': word.word, 'value': word.freq} for word in aggregated_words]
-    context = {'word_freq': word_freq}
-    logger.info('wordcloud end')
-    return JsonResponse(context)
+    else:
+        logger.info('wordcloud start')
+        area_list = [{'id': '0', 'name': 'TOTAL'}, {'id': '1', 'name': '上海'}, {'id': '2', 'name': '内蒙古'},
+                     {'id': '3', 'name': '北京'}, {'id': '4', 'name': '南京'}, {'id': '5', 'name': '南宁'},
+                     {'id': '6', 'name': '南昌'}, {'id': '7', 'name': '合肥'}, {'id': '8', 'name': '吉林'},
+                     {'id': '9', 'name': '哈尔滨'}, {'id': '10', 'name': '四川'}, {'id': '11', 'name': '天津'},
+                     {'id': '12', 'name': '宁夏回族'}, {'id': '13', 'name': '安徽'}, {'id': '14', 'name': '山东'},
+                     {'id': '15', 'name': '山西'}, {'id': '16', 'name': '广东'}, {'id': '17', 'name': '广州'},
+                     {'id': '18', 'name': '成都'}, {'id': '19', 'name': '拉萨'}, {'id': '20', 'name': '新疆维吾尔'},
+                     {'id': '21', 'name': '昆明'}, {'id': '22', 'name': '武汉'}, {'id': '23', 'name': '江苏'},
+                     {'id': '24', 'name': '江西'}, {'id': '25', 'name': '沈阳'}, {'id': '26', 'name': '河北'},
+                     {'id': '27', 'name': '河南'}, {'id': '28', 'name': '济南'}, {'id': '29', 'name': '浙江'},
+                     {'id': '30', 'name': '海南'}, {'id': '31', 'name': '海口'}, {'id': '32', 'name': '深圳'},
+                     {'id': '33', 'name': '湖北'}, {'id': '34', 'name': '湖南'}, {'id': '35', 'name': '甘肃'},
+                     {'id': '36', 'name': '石家庄'}, {'id': '37', 'name': '福建'}, {'id': '38', 'name': '西藏'},
+                     {'id': '39', 'name': '贵州'}, {'id': '40', 'name': '贵阳'}, {'id': '41', 'name': '辽宁'},
+                     {'id': '42', 'name': '郑州'}, {'id': '43', 'name': '重庆'}, {'id': '44', 'name': '银川'},
+                     {'id': '45', 'name': '长春'}, {'id': '46', 'name': '长沙'}, {'id': '47', 'name': '陕西'},
+                     {'id': '48', 'name': '青岛'}, {'id': '49', 'name': '青海'}, {'id': '50', 'name': '黑龙江'}]
+        area_dict = {item['id']: item['name'] for item in area_list}
+        area_id = request.GET.get('region_id')
+        print("\n---\nareaid:", area_id)
+        print(area_id in area_dict)
+        if area_id in area_dict:
+            print(area_dict[area_id])
+            search_area = area_dict[area_id]
+        else:
+            return JsonResponse({'word_freq': [{'name': '@TEST@', 'value': 1}]})
+        aggregated_words = GovDocWordFreqAggr.objects.filter(area=search_area).order_by('-freq')[:500]
+        word_freq = [{'name': word.word, 'value': word.freq} for word in aggregated_words]
+        context = {'word_freq': word_freq, 'area_list': area_list}
+        logger.info('wordcloud end')
+        return JsonResponse(context)

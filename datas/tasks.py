@@ -1,7 +1,7 @@
 import concurrent.futures
+import datetime
 import gc
 import logging
-import math
 import multiprocessing
 import os
 import re
@@ -13,7 +13,7 @@ import pandas as pd
 from django.conf import settings
 from django.db import transaction, connections
 
-from datas.models import GovDoc, GovDocWordFreq, GovDocWordFreqAggr
+from datas.models import GovDoc, GovDocWordFreq, GovDocWordFreqAggr, ToutiaoDoc
 from datas.utils import get_stopwords
 from utils.json_load import load_forms
 from utils.utils import generate_id
@@ -21,35 +21,69 @@ from utils.utils import generate_id
 logger = logging.getLogger('django')
 
 
-def gov_data_import(filepath: str = settings.BASE_DIR / "DATA/政府网站数据/数据汇总"):
+def get_gov_doc_name(name_key):
+    area_pattern = re.compile(r'[^\d-]+')
+    logger.debug(f"读取文件：{name_key}")
+    # 匹配地区名
+    match_res = area_pattern.search(name_key)
+    if match_res and match_res.group()[-2:] == "文件":
+        area = match_res.group()[:-2]
+    else:
+        logger.error('地区名称读取失败')
+        area = ''
+        # raise ValueError("地区名称读取失败")
+    return area
+
+
+def unpack_result(item, key_map, result):
+    for map_key, map_value in key_map.items():
+        alternatives = map_value['alternatives']
+        read_type = map_value['read_type']
+        if read_type == 'and':
+            for alt_key in alternatives:
+                if alt_key in item:
+                    result[map_key] += str(item[alt_key]) + ' '
+        else:
+            for alt_key in alternatives:
+                if alt_key in item:
+                    result[map_key] = str(item[alt_key]) if item[alt_key] else ''
+                    break
+        result[map_key] = result[map_key].strip()
+
+
+def convert_date(date_value):
+    if date_value:
+        timestring = date_value
+        temp_date = pd.to_datetime(timestring, errors='coerce')
+        if temp_date is pd.NaT:
+            temp_date = pd.to_datetime(timestring, format="%Y年%m月%d日", errors='coerce')
+        temp_date = temp_date if temp_date is not pd.NaT else None
+        date_value = temp_date
+    else:
+        date_value = None
+    return date_value
+
+
+def gov_data_import(filepath: str = ""):
+    if not filepath:
+        filepath = settings.BASE_DIR / "DATA/政府网站数据/数据汇总"
     logger.info("政府汇总数据导入中")
     logger.info(f"读取文件：{filepath}")
     try:
         data_json = load_forms(filepath)
-        area_pattern = re.compile(r'[^\d-]+')
         # time_pattern = re.compile(r'\W*\d{4}年\d+月\d{1,2}日\W*')
 
         for name_key, value_list in data_json.items():
-            logger.debug(f"读取文件：{name_key}")
-            # 匹配地区名
-            match_res = area_pattern.search(name_key)
-            if match_res and match_res.group()[-2:] == "文件":
-                area = match_res.group()[:-2]
-            else:
-                logger.error('地区名称读取失败')
-                area = ''
-                # raise ValueError("地区名称读取失败")
-
+            area = get_gov_doc_name(name_key)
             key_map = {
-                'link': ['link', '链接', 'url', 'pagelink_id'],
-                'title': ['title', '标题'],
-                'content': ['正文内容'],
-                'pub_date': ['发布日期'],
-                'source': ['department', '来源'],
-                'level': ['级别'],
-                'types': ['类别', '文件类型', 'type', '新闻类型', '类型']
+                'link': {"alternatives": ['link', '链接', 'url', 'pagelink_id'], "read_type": "or", },
+                'title': {"alternatives": ['title', '标题'], "read_type": "or", },
+                'content': {"alternatives": ['正文内容'], "read_type": "or", },
+                'pub_date': {"alternatives": ['发布日期'], "read_type": "or", },
+                'source': {"alternatives": ['department', '来源'], "read_type": "or", },
+                'level': {"alternatives": ['级别'], "read_type": "or", },
+                'types': {"alternatives": ['类别', '文件类型', 'type', '新闻类型', '类型'], "read_type": "and", },
             }
-
             for item in value_list:
                 result = {
                     'link': '',
@@ -60,57 +94,93 @@ def gov_data_import(filepath: str = settings.BASE_DIR / "DATA/政府网站数据
                     'level': '',
                     'types': ''
                 }
-                for map_key, alternatives in key_map.items():
-                    if map_key == 'types':
-                        for alt_key in alternatives:
-                            if alt_key in item:
-                                result[map_key] += str(item[alt_key]) + ' '
-                    else:
-                        for alt_key in alternatives:
-                            if alt_key in item:
-                                result[map_key] = str(item[alt_key]) if item[alt_key] else ''
-                                # if map_key not in ['pub_date'] else item[alt_key]
-                                break
-                    result[map_key] = result[map_key].strip()
+                unpack_result(item, key_map, result)
 
                 # 处理发布日期
-                if result['pub_date']:
-                    timestring = result['pub_date']
-                    temp_date = pd.to_datetime(timestring, errors='coerce')
-                    if temp_date is pd.NaT:
-                        temp_date = pd.to_datetime(timestring, format="%Y年%m月%d日", errors='coerce')
-                    temp_date = temp_date if temp_date is not pd.NaT else None
-                    result['pub_date'] = temp_date
-                else:
-                    result['pub_date'] = None
+                result['pub_date'] = convert_date(result['pub_date'])
 
-                types = result['types'][:500]
-                link = result['link']
-                title = result['title'][:500]
-                content = result['content']
-                pub_date = result['pub_date']
-                source = result['source'][:50]
-                level = result['level'][:50]
-                if GovDoc.objects.filter(area=area, title=title).exists():
+                (link, title, content, pub_date, source, level, types) = result.values()
+
+                title = title[:500]
+                source = source[:50]
+                level = level[:50]
+                types = types[:500]
+                if not pub_date:
+                    pub_date = datetime.datetime(1900, 1, 1)
+                if GovDoc.objects.filter(area=area, title=title, pub_date=pub_date).exists():
                     continue
-                if pub_date and not GovDoc.objects.filter(area=area, title=title, pub_date=pub_date).exists():
-                    update_fields = {
-                        'area': area, 'types': types, 'link': link,
-                        'title': title, 'content': content,
-                        'pub_date': pub_date, 'source': source,
-                        'level': level
-                    }
-                    data_model = GovDoc(**update_fields)
-                else:
-                    update_fields = {
-                        'area': area, 'types': types, 'link': link,
-                        'title': title, 'content': content, 'source': source,
-                        'level': level
-                    }
-                    data_model = GovDoc(**update_fields)
+                update_fields = {
+                    'area': area, 'types': types, 'link': link,
+                    'title': title, 'content': content,
+                    'pub_date': pub_date, 'source': source,
+                    'level': level
+                }
+                data_model = GovDoc(**update_fields)
                 data_model.save()
         logger.info("政府汇总数据读取写入完成")
         return "success"
+    except Exception as e:
+        logging.error(f"ERROR:{e}")
+        return "error"
+
+
+def toutiao_data_import(rootpath: str = ""):
+    if not rootpath:
+        rootpath = settings.BASE_DIR / "DATA/头条"
+    logger.info("头条数据导入中")
+    logger.info(f"读取文件：{rootpath}")
+    try:
+        data_json = load_forms(rootpath)
+        for name_key, value_list in data_json.items():
+
+            key_map = {
+                'title': {"alternatives": ['title', '标题'], "read_type": "or", },
+                'link': {"alternatives": ['url', 'link', '链接', 'pagelink_id'], "read_type": "or", },
+                'area': {"alternatives": ['area_keyword'], "read_type": "or", },
+                'search_keyword': {"alternatives": ['search_keyword'], "read_type": "or", },
+                'pub_date': {"alternatives": ['date', '发布日期'], "read_type": "or", },
+                'source': {"alternatives": ['media', 'department', '来源'], "read_type": "or", },
+                'content': {"alternatives": ['context', '正文内容'], "read_type": "or", },
+                'comment': {"alternatives": ['comment', '评论'], "read_type": "or", },
+            }
+
+            for item in value_list:
+                result = {
+                    'title': '',
+                    'link': '',
+                    'area': '',
+                    'search_keyword': '',
+                    'pub_date': None,
+                    'source': '',
+                    'content': '',
+                    'comment': '',
+                }
+                unpack_result(item, key_map, result)
+
+                # 处理发布日期
+                result['pub_date'] = convert_date(result['pub_date'])
+
+                (title, link, area, search_keyword, pub_date, source, content, comment) = result.values()
+                search_keyword = search_keyword[:50]
+                title = title[:500]
+                source = source[:50]
+
+                if not pub_date:
+                    pub_date = datetime.datetime(1900, 1, 1)
+                if ToutiaoDoc.objects.filter(area=area, title=title, pub_date=pub_date).exists():
+                    continue
+                update_fields = {
+                    'title': title,
+                    'link': link,
+                    'area': area,
+                    'search_keyword': search_keyword,
+                    'pub_date': pub_date,
+                    'source': source,
+                    'content': content,
+                    'comment': comment
+                }
+                data_model = ToutiaoDoc(**update_fields)
+                data_model.save()
     except Exception as e:
         logging.error(f"ERROR:{e}")
         return "error"
