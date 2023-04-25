@@ -1,8 +1,8 @@
 <!-- navbar.html -->
 
 {% load static %}
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css">
-        <link rel="stylesheet" type="text/css" href="{% static 'css/style.css' %}">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css">
+<link rel="stylesheet" type="text/css" href="{% static 'css/style.css' %}">
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark" aria-labelledby="navbarNav">
     <div class="container">
         <a class="navbar-brand" href="/">信息系统</a>
@@ -15,9 +15,9 @@
                 <li class="nav-item">
                     <a class="nav-link {% if active == 0 %}active{% endif %}" href="/">首页</a>
                 </li>
-{#                <li class="nav-item">#}
-{#                    <a class="nav-link" href="/admin" target="_blank">管理员界面</a>#}
-{#                </li>#}
+                {#                <li class="nav-item">#}
+                {#                    <a class="nav-link" href="/admin" target="_blank">管理员界面</a>#}
+                {#                </li>#}
                 <li class="nav-item">
                     <a class="nav-link {% if active == 1 %}active{% endif %}" href="/datas/1">政府数据</a>
                 </li>
@@ -29,6 +29,9 @@
                 </li>
                 <li class="nav-item">
                     <a class="nav-link {% if active == 4 %}active{% endif %}" href="/report">报告展示</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if active == 5 %}active{% endif %}" href="/report/graph">发展指数图表</a>
                 </li>
             </ul>
         </div>
