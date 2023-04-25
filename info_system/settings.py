@@ -12,6 +12,8 @@ https://docs.djangoproject.com/en/4.1/ref/settings/
 import os
 import secrets
 from pathlib import Path
+
+import concurrent_log_handler
 from dotenv import load_dotenv
 
 # 像这样在项目内部构建路径：BASE_DIR / '子目录'
@@ -27,7 +29,6 @@ STATICFILES_DIRS = [
     BASE_DIR / "static",
 ]
 
-
 # 安全警告：在生产环境中要保护好使用的密钥！
 load_dotenv(dotenv_path=BASE_DIR / '.env')
 SECRET_KEY = os.environ.get('SECRET_KEY')
@@ -35,7 +36,7 @@ if not SECRET_KEY:
     SECRET_KEY = secrets.token_hex(64)
 
 # 安全警告：不要在生产环境中开启调试模式！
-DEBUG = False
+DEBUG = True
 
 ALLOWED_HOSTS = ['*']
 # "127.0.0.1", "10.4.32.140"
@@ -105,15 +106,15 @@ DATABASES = {
 
 CACHES = {
     "default": {
-        "BACKEND": "django_redis.cache.RedisCache",		# 使用django-redis的缓存
-        "LOCATION": "redis://127.0.0.1:6379/1",			# redis数据库的位置
+        "BACKEND": "django_redis.cache.RedisCache",  # 使用django-redis的缓存
+        "LOCATION": "redis://127.0.0.1:6379/1",  # redis数据库的位置
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
             "CONNECTION_POOL_KWARGS": {"max_connections": 100},
-            "DECODE_RESPONSES": True,			# 自动将byte转成字符串
-            "PASSWORD": "",						# 设置密码
+            "DECODE_RESPONSES": True,  # 自动将byte转成字符串
+            "PASSWORD": "",  # 设置密码
         },
-        'KEY-PREFIX': 'info_sys',				# 设置缓存前缀
+        'KEY-PREFIX': 'info_sys',  # 设置缓存前缀
     }
 }
 
@@ -148,6 +149,7 @@ if not os.path.exists(BASE_DIR / 'logs'):
     os.mkdir(BASE_DIR / 'logs')
 
 DEFAULT_CHARSET = 'utf-8'
+FILE_HANDLER = "concurrent_log_handler.ConcurrentRotatingFileHandler"
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -159,7 +161,7 @@ LOGGING = {
         },
         'infofile': {
             'level': 'INFO',
-            'class': 'logging.handlers.RotatingFileHandler',
+            'class': FILE_HANDLER,
             'filename': BASE_DIR / 'logs/info.log',
             "maxBytes": 1024 * 1024 * 512,
             "backupCount": 5,
@@ -168,7 +170,7 @@ LOGGING = {
         },
         'errorfile': {
             'level': 'ERROR',
-            'class': 'logging.handlers.RotatingFileHandler',
+            'class': FILE_HANDLER,
             'filename': BASE_DIR / 'logs/error.log',
             "maxBytes": 1024 * 1024 * 512,
             "backupCount": 5,
@@ -177,7 +179,7 @@ LOGGING = {
         },
         'debugfile': {
             'level': 'DEBUG',
-            'class': 'logging.handlers.RotatingFileHandler',
+            'class': FILE_HANDLER,
             'filename': BASE_DIR / 'logs/debug.log',
             "maxBytes": 1024 * 1024 * 512,
             "backupCount": 5,
@@ -186,7 +188,7 @@ LOGGING = {
         },
         'db_file': {
             'level': 'DEBUG',
-            'class': 'logging.handlers.RotatingFileHandler',
+            'class': FILE_HANDLER,
             'filename': BASE_DIR / 'logs/db_debug.log',
             "maxBytes": 1024 * 1024 * 512,
             "backupCount": 5,

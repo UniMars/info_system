@@ -6,10 +6,59 @@
 {% block head %}
     {#    <link  href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css">#}
 
-        <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     {#    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>#}
     {#    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.min.js"></script>#}
+    <style>
+        .navbar-nav1 {
+            list-style-type: none;
+            max-height: 90vh;
+            overflow-y: auto;
+            {#position: sticky;#}
+            {#bottom: 0;#}
+        }
 
+        {#.toc-container {#}
+        {#    position: fixed;#}
+        {#    top: 0;#}
+        {#    right: 0;#}
+        {#    width: 10%;#}
+        {
+        #}#}
+
+        .nav-link {
+            font-family: 'Times New Roman', '微软雅黑 Light';
+            font-weight: bold;
+            font-size: 16px !important;
+            text-align: left;
+        }
+
+        .nav-link[data-level="2"] {
+            font-weight: bold;
+            padding-left: 2rem !important;
+        }
+
+        .nav-link[data-level="3"] {
+            font-weight: 600;
+            font-size: 12px !important;
+            padding-left: 4rem !important;
+        }
+
+        .nav-link[data-level="4"] {
+            font-size: 10px !important;
+            padding-left: 6rem !important;
+        }
+
+        .nav-link[data-level="5"] {
+            font-size: 10px !important;
+            padding-left: 8rem !important;
+        }
+
+        .nav-link[data-level="6"] {
+            font-size: 10px !important;
+            padding-left: 10rem;
+        }
+    </style>
 {% endblock %}
 
 {% block navbar %}
@@ -24,21 +73,26 @@
 
             <div class="article-container col-md-8">
                 {% include 'article.html' %}
-        <hr>
+                <hr>
                 <button class="btn-default" id="back-to-top"
-                        style="display: none; position: fixed; bottom: 120px; right: 20px; background-color: white; color: #fff; border-radius: 50%; padding: 10px;font-size:32px;  cursor: pointer; z-index: 999;" ><a href="#top" style="text-decoration: none">⬆️️</a>
+                        style="display: none; position: fixed; bottom: 120px; right: 20px; background-color: white; color: #fff; border-radius: 50%; padding: 10px;font-size:32px;  cursor: pointer; z-index: 999;">
+                    <a href="#top" style="text-decoration: none">⬆️️</a>
                 </button>
-                <br>
-                <br>
-                <br>
                 <br>
                 <br>
                 <br>
             </div>
             <div class="navigation-container col-md-4" style="border-left: 1px solid rgb(198,199,200)">
                 <a href="{% static '中国数字经济发展报告.pdf' %}" class="btn btn-primary">下载报告</a>
-        <hr>
-                <ul class="navbar-nav" id="nav-list"></ul>
+                <hr>
+                <div class="h-100 w-100 toc-container">
+
+                    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+                        <div class="collapse navbar-collapse" id="navbarNav">
+                            <ul class="navbar-nav1" id="nav-list"></ul>
+                        </div>
+                    </nav>
+                </div>
             </div>
         </div>
 
@@ -63,7 +117,7 @@
             {#$('#back-to-top').click(function () {#}
             {#    $('html, body').animate({scrollTop: 0}, 800);#}
             {#    return false;#}
-            {#});#}
+            //});
         });
         document.addEventListener('DOMContentLoaded', function () {
             const navList = document.getElementById('nav-list');
@@ -76,21 +130,10 @@
                 const link = document.createElement('a');
                 link.className = 'nav-link';
                 link.setAttribute('href', `#${header.id}`);
-                link.setAttribute('style', "font-family: 'Times New Roman','宋体';text-align: left");
+                link.setAttribute('style', "font-family: 'Times New Roman','微软雅黑';text-align: left");
                 {#判断header级别,为textcontext添加相应数量的--#}
-                if (header.tagName === 'H1') {
-                    link.textContent = header.textContent;
-                } else if (header.tagName === 'H2') {
-                    link.textContent = '——|' + header.textContent;
-                } else if (header.tagName === 'H3') {
-                    link.textContent = '——|——|' + header.textContent;
-                } else if (header.tagName === 'H4') {
-                    link.textContent = '————|——|' + header.textContent;
-                } else if (header.tagName === 'H5') {
-                    link.textContent = '——————|——|' + header.textContent;
-                } else if (header.tagName === 'H6') {
-                    link.textContent = '————————|——|' + header.textContent;
-                }
+                link.setAttribute('data-level', header.tagName.slice(1));
+                link.textContent = header.textContent;
                 listItem.appendChild(link);
                 navList.appendChild(listItem);
             });

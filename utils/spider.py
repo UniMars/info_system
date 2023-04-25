@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import datetime
 import json
+import os.path
 import random
 import re
 import time
@@ -13,7 +14,9 @@ from urllib.parse import quote
 import openpyxl as op
 import xlwt
 from bs4 import BeautifulSoup
+from django.conf import settings
 from selenium import webdriver
+from selenium.webdriver.common.by import By
 
 from utils.utils import data_cleaning
 
@@ -23,10 +26,14 @@ keyword = '数字经济'
 
 def toutiao_spider(area_keyword, search_keyword):
     for j in range(18):  # 今日头条搜索资讯一栏大概每个关键词会弹出18页
-        file_path = 'D:/Programs/Code/python/projects/info_sys/DATA/头条/今日头条+' + area_keyword + '.xlsx'
+        file_name = '今日头条+' + area_keyword + '.xlsx'
+        root_path = settings.BASE_DIR / 'DATA/头条'
+        file_path = root_path / file_name
         try:
             wb = op.load_workbook(file_path)  # 该文件需要提前创建
         except FileNotFoundError:
+            if not os.path.exists(root_path):
+                os.makedirs(root_path)
             wb = op.Workbook()
             sh = wb.worksheets[0]
             sh.append(['title', 'url', 'area_keyword', 'search_keyword', 'date', 'media', 'context', 'comment'])
@@ -41,19 +48,20 @@ def toutiao_spider(area_keyword, search_keyword):
             driver.get(url)
             time.sleep(1.25)  # 可根据实际情况调整
             for i in range(1, 11):  # 每一页有10篇文章
-                link = driver.find_element_by_xpath(
-                    '/html/body/div[2]/div[2]/div[{}]/div/div/div/div/div[1]/div/a'.format(str(i)))
+                link = driver.find_element(By.XPATH,
+                                           '/html/body/div[2]/div[2]/div[{}]/div/div/div/div/div[1]/div/a'.format(
+                                               str(i)))
                 url = link.get_attribute('href')  # 定位文章的链接
                 driver.get(url)  # 获取具体的文章页面
                 time.sleep(0.75)
-                tdmc = driver.find_element_by_class_name('article-content').text
+                tdmc = driver.find_element(By.CLASS_NAME, 'article-content').text
                 list1 = tdmc.split('\n', 2)
                 title = list1[0].strip()
                 date = list1[1].split('·')[0]
                 media = list1[1].split('·')[1].strip()
                 context = data_cleaning(list1[2])
                 # 解析网页获取文章的题目、时间、来源、正文、部分评论
-                comment = driver.find_element_by_class_name('comment-list').text
+                comment = driver.find_element(By.CLASS_NAME, 'comment-list').text
                 comment = data_cleaning(comment)
                 ws.append([title, url, area_keyword, search_keyword, date, media, context, comment])
                 wb.save(file_path)  # 保存文件
