@@ -1,4 +1,4 @@
-{% extends 'base.html' %}
+{% extends 'template/base.html' %}
 {% load static %}
 
 {% block title %}报告展示和下载页面{% endblock %}
@@ -62,7 +62,7 @@
 {% endblock %}
 
 {% block navbar %}
-    {% include 'navbar.html' with active=4 %}
+    {% include 'template/navbar.html' with active=4 %}
 {% endblock %}
 
 {% block content %}
@@ -72,7 +72,7 @@
         <div class="container row">
 
             <div class="article-container col-md-8">
-                {% include 'article.html' %}
+                {% include 'reports/article.html' %}
                 <hr>
                 <button class="btn-default" id="back-to-top"
                         style="display: none; position: fixed; bottom: 120px; right: 20px; background-color: white; color: #fff; border-radius: 50%; padding: 10px;font-size:32px;  cursor: pointer; z-index: 999;">
