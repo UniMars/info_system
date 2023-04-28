@@ -1,0 +1,120 @@
+{% load static %}
+{% block import %}
+        <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+{#    <script src="{% static 'JavaScript/jquery/jquery-3.6.0.js' %}"></script>#}
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.min.js"></script>
+    <script src="https://cdn.datatables.net/1.11.3/js/jquery.dataTables.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.11.3/css/jquery.dataTables.min.css">
+{% endblock %}
+
+{% block content %}
+
+    <div class="tab-pane fade show active" id="v-pills-form" role="tabpanel"
+         aria-labelledby="v-pills-form-tab" style="width: 100% ;height: 100%">
+
+        <button class="btn btn-primary mb-3" id="importData">导入数据</button>
+        <button class="btn btn-primary mb-3" id="updateTable">更新数据</button>
+        <button class="btn btn-primary mb-3" id="wordSplit">分词统计</button>
+        <br>
+        <h1 align="center">
+
+            {{ data_type }}汇总表预览
+        </h1>
+        <table class="display" id="myTable" style="white-space: nowrap" aria-description="数据汇总展示">
+            <caption>数据汇总展示</caption>
+            <thead>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+    </div>
+{% endblock %}
+{% block javascript %}
+    <script>
+        (function () {
+            const Table = {
+                config: {
+                    'debug': true,
+                    'autoWidth': false,
+                    'serverSide': true,
+                    'searching': false,
+                    'paging': true,
+                    'lengthChange': false,
+                    'info': false,
+                    'deferRender': true,
+                    'scrollY': "calc(10 * 43px)",
+                    'scrollX': true,
+                    'scroller': {'loadingIndicator': true},
+                    columns: [
+                        {'title': "发布日期", 'data': "发布日期"},
+                        {'title': "地区", 'data': "地区"},
+                        {'title': "类型", 'data': "类型"},
+                        {'title': "来源", 'data': "来源"},
+                        {'title': "级别", 'data': "级别"},
+                        {'title': "标题", 'data': "标题"},
+                    ],
+                },
+                init: function (datatype) {
+                    this.config.ajax = `/datas/${datatype}/updateTable`;
+                    return $('#myTable').DataTable(this.config);
+                },
+                update: function (datatype, table) {
+                    $.ajax({
+                        url: `/datas/${datatype}/updateTable`,
+                        method: 'GET',
+                        success: function (data) {
+                            table.clear();
+                            table.rows.add(data);
+                            table.draw();
+                        },
+                        error: function (xhr, status, error) {
+                            console.error('Error fetching new data:', error);
+                        }
+                    });
+                }
+            };
+            const EventHandlers = {
+                tableHeaderClick: function (table) {
+                    $('#myTable thead th').each(function () {
+                        $(this).click(function () {
+                            const column = table.column($(this).index());
+                            const order = column.order()[0] === 'asc' ? 'desc' : 'asc';
+                            column.order(order).draw();
+                        });
+                    });
+                },
+                updateTableButtonClick: function (datatype, table) {
+                    $('#updateTable').on('click', function () {
+                        Table.update(datatype, table);
+                    });
+                },
+                importDataButtonClick: function (datatype, table) {
+                    $('#importData').on('click', function () {
+                        // ... (original importData click event handler)
+                    });
+                },
+                wordSplitButtonClick: function (datatype) {
+                    $('#wordSplit').on('click', function () {
+                        // ... (original wordSplit click event handler)
+                    });
+                },
+                test2ButtonClick: function (datatype) {
+                    $('#test2').on('click', function () {
+                        // ... (original test2 click event handler)
+                    });
+                },
+            };
+
+            $(document).ready(async function () {
+                {#const datatype={{ datatype  }}#}
+                const table = Table.init({{datatype}})
+                Table.update({{datatype}}, table);
+                EventHandlers.tableHeaderClick(table);
+                EventHandlers.updateTableButtonClick({{datatype}}, table);
+                EventHandlers.importDataButtonClick({{datatype}}, table);
+                EventHandlers.wordSplitButtonClick({{datatype}});
+            });
+        })();
+    </script>
+{% endblock %}

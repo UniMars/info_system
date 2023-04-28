@@ -1,0 +1,56 @@
+{% load static %}
+
+<div class="d-flex nav flex-column nav-pills this-sidebar" id="v-pills-tab" role="tablist"
+     aria-orientation="vertical">
+    <a href="#" class="d-flex align-items-center mb-3 mb-md-0 me-md-auto link-dark text-decoration-none">
+        <svg class="bi me-2" width="40" height="32">
+
+        </svg>
+        <span class="fs-4">展示视图</span>
+    </a>
+    <hr>
+    <ul class="nav nav-pills flex-column mb-auto">
+        <li>
+            <a class="nav-link link-dark active" id="v-pills-form-tab" data-bs-toggle="pill"
+               href="#v-pills-form" role="tab" aria-controls="v-pills-form" aria-selected="true">
+                <svg class="bi me-2" width="16" height="16">
+                    <use xlink:href="#table"></use>
+                </svg>
+                表格
+            </a>
+        </li>
+        <li>
+            <a class="nav-link link-dark" id="v-pills-wordcloud-tab" data-bs-toggle="pill"
+               href="#v-pills-wordcloud" role="tab" aria-controls="v-pills-wordcloud" aria-selected="false">
+                <svg class="bi me-2" width="16" height="16">
+                    <use xlink:href="#cloud"></use>
+                </svg>
+                词云
+            </a>
+            <a class="nav-link link-dark" id="v-pills-graph-tab" data-bs-toggle="pill"
+               href="#v-pills-graph" role="tab" aria-controls="v-pills-graph" aria-selected="false">
+                <svg class="bi me-2" width="16" height="16">
+                    <use xlink:href="#lineChart"></use>
+                </svg>
+                折线图
+            </a>
+        </li>
+    </ul>
+    <hr>
+    <div class="dropdown">
+        <a href="#" class="d-flex align-items-center link-dark text-decoration-none dropdown-toggle"
+           id="dropdownUser2" data-bs-toggle="dropdown" aria-expanded="false">
+            <img src="https://picx.zhimg.com/v2-3ff96ff65c3555eaeff41c6daa7eb88b_r.jpg" alt="" width="32"
+                 height="32" class="rounded-circle me-2">
+            <strong>信息学院</strong>
+        </a>
+        <ul class="dropdown-menu text-small shadow" aria-labelledby="dropdownUser2">
+            <li><a class="dropdown-item" href="#">Settings</a></li>
+            <li>
+                <hr class="dropdown-divider">
+            </li>
+            <li><a class="dropdown-item" href="#">Sign out</a></li>
+        </ul>
+    </div>
+
+</div>

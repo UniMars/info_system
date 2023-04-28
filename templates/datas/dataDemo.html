@@ -1,0 +1,72 @@
+{% extends 'template/base.html' %}
+{% load static %}
+{% block title %}信息系统-数据展示页面{% endblock %}
+{% block head %}
+    <meta name="datatype" content="{{ data_type.id }}">
+
+    <!-- 引入Bootstrap CSS文件 -->
+
+    <!-- 引入Bootstrap JS文件和其依赖项 -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.min.js"></script>
+
+
+
+
+{% endblock %}
+{% block navbar %}
+    {% include 'template/navbar.html' with active=data_type.id %}
+{% endblock %}
+{% block content %}
+    <div class="row this-row">
+        <!--                侧边栏-->
+        <div class="col-md-2 bg-light text-grey p-3 " style="border: solid 1px #c4c3c3">
+            {% include 'datas/sidebar.html' %}
+        </div>
+        <div class="col-md-10 p-3 col-right">
+            <div class="tab-content" id="v-pills-tabContent" style="width: 100% ;height: 100%">
+                {% include 'datas/table.html' with datatype=data_type.id %}
+                {% include 'datas/wordcloud.html' with datatype=data_type.id %}
+                {% include 'datas/hotness.html' with datatype=data_type.id %}
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block script %}
+    <script>
+        (function () {
+            const DataType = {
+                get: function () {
+                    const dataTypeMeta = document.querySelector('meta[name="datatype"]');
+                    return dataTypeMeta.getAttribute('content').toString();
+                }
+            };
+
+
+            const DropdownList = {
+                generate: function (dropDownLoc, data, onSelect) {
+                    console.log("data:", data);
+                    data.forEach(item => {
+                        // console.log("item:", item)
+                        const listItem = $('<li>');
+                        const link = $('<a>', {
+                            class: 'dropdown-item',
+                            href: '#',
+                            text: item.name,
+                            on: onSelect(item),
+                        });
+                        listItem.append(link);
+                        dropDownLoc.append(listItem);
+                    });
+                }
+            };
+
+            const EventHandlers = {}
+
+            // Attach DropdownList to the window object
+            window.DropdownList = DropdownList;
+        })();
+    </script>
+{% endblock %}
