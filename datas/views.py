@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import datetime
 import logging
 
 from django.core.cache import cache
@@ -6,7 +7,7 @@ from django.http import JsonResponse
 from django.shortcuts import render, get_object_or_404
 from django.views.decorators.cache import cache_page
 
-from .models import GovDoc, GovDocWordFreqAggr, DataType
+from .models import GovDoc, GovDocWordFreqAggr, DataType, WordHotness
 from .tasks import gov_data_import, word_split
 
 # import multiprocessing
@@ -24,7 +25,7 @@ def index(response, data_id):
         logger.error(e)
         return render(response, '404.html', status=404)
     else:
-        return render(response, 'dataDemo.html', context)
+        return render(response, 'datas/dataDemo.html', context)
 
 
 def handle_task_request(request, data_id):
@@ -135,3 +136,29 @@ def wordcloud(request, data_id):
         context = {'word_freq': word_freq, 'area_list': area_list}
         logger.info('wordcloud end')
         return JsonResponse(context)
+
+
+def get_word_hotness(request, data_id):
+    try:
+        data_id = int(data_id)
+    except Exception as _:
+        logger.error(f"Invalid data_id:{data_id}\n{_}")
+        return JsonResponse({})
+    # 获取当前年份
+    current_year = datetime.datetime.now().year
+
+    # 计算十年前的年份
+    ten_years_ago = current_year - 9
+
+    # 查询datatype为1，近十年的word和freq组合
+    results = WordHotness.objects.filter(datetype=data_id, year__gte=ten_years_ago).values('word', 'freq', 'year')
+    word_list = set([item['word'] for item in results])
+    # 把result按照word_list里面的word进行分组
+    word_freq = {}
+    for word in word_list:
+        word_freq[word] = {}
+        for item in results:
+            if item['word'] == word:
+                word_freq[word][item['year']] = item['freq']
+    # data = [{'word': item['word'], 'freq': item['freq'], 'year': item['year']} for item in results]
+    return JsonResponse({'word_freq': word_freq})
