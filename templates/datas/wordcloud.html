@@ -1,0 +1,183 @@
+{% load static %}
+{% block import %}
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.min.js"></script>
+    <script src="https://cdn.bootcdn.net/ajax/libs/echarts/5.3.0/echarts.min.js"></script>
+    <script src="{% static 'JavaScript/wordcloud/echarts-wordcloud.js' %}"></script>
+    {#    <script type="text/javascript" src="{% static 'JavaScript/datas/datas.js' %}"></script>#}
+
+{% endblock %}
+
+{% block content %}
+    <img src="{% static 'image/cloud.png' %}" id="maskImage" alt="mask image" style="display:none;">
+    <div class="tab-pane fade w-100 h-100" id="v-pills-wordcloud" role="tabpanel"
+         aria-labelledby="v-pills-wordcloud-tab">
+        <div class="dropdown">
+            <button class="btn btn-primary dropdown-toggle" type="button" id="wordCloudStyleDropdown"
+                    data-bs-toggle="dropdown" aria-expanded="false">
+                TOTAL
+            </button>
+            <ul class="dropdown-menu" id="wordCloudDropdownList" aria-labelledby="wordCloudStyleDropdown"
+                style="max-height: 50vh;overflow-y: auto;">
+            </ul>
+        </div>
+        <div id="wordcloud" class="top-50 start-50 translate-middle" style="width: 80%;height: 80%"></div>
+    </div>
+
+{% endblock %}
+{% block script %}
+    <script>
+        (function () {
+            const DataFetcher = {
+                fetchWordFrequencyData: async function (datatype, regionId) {
+                    try {
+                        const response = await fetch(`/datas/${datatype}/wordCloud?region_id=${regionId}`, {method: 'GET'});
+                        return await response.json();
+                    } catch (error) {
+                        console.error('Error fetching word frequency data:', error);
+                        throw error;
+                    }
+                },
+            };
+
+            const WordCloud = {
+                init: function () {
+                    this.chart = echarts.init(document.getElementById('wordcloud'));
+                    let chart = this.chart;
+                    {#console.log(chart)#}
+                    window.addEventListener('resize', function () {
+                        chart.resize();
+                    });
+                    const canvas = $('canvas')[0];
+                    {#console.log(canvas)#}
+                    // 设置 canvas 元素的 willReadFrequently 属性为 true
+                    const contextOptions = {
+                        willReadFrequently: true
+                    };
+                    const ctx = canvas.getContext('2d', contextOptions);
+                    {#let aa = ctx.getContextAttributes();#}
+                    {#console.log(aa)#}
+                    return chart;
+                },
+                generateWordCloudConfig: function () {
+                    const maskImage = document.getElementById('maskImage');
+                    const wordCloudOptions = {
+                        tooltip: {},
+                        title: {
+                            text: '各地区政府高频用词词云图'
+                        },
+                        series: [{
+                            type: 'wordCloud',
+                            shape: 'circle',
+                            maskImage: maskImage,
+                            gridSize: 8,
+                            sizeRange: [12, 50],
+                            rotationRange: [-90, 90],
+                            left: 'center',
+                            top: 'center',
+                            {#right: null,#}
+                            {#bottom: null,#}
+                            width: '100%',
+                            height: '100%',
+                            rotationStep: 45,
+                            drawOutOfBound: false,
+                            shrinkToFit: true,
+                            layoutAnimation: true,
+                            keepAspect: true,
+                            textStyle: {
+                                fontFamily: 'sans-serif',
+                                fontWeight: 'bold',
+                                color: function () {
+                                    return 'rgb(' + [
+                                        Math.round(Math.random() * 160),
+                                        Math.round(Math.random() * 160),
+                                        Math.round(Math.random() * 160)
+                                    ].join(',') + ')';
+                                }
+                            },
+                            emphasis: {
+                                textStyle: {
+                                    textShadowBlur: 10,
+                                    textShadowColor: '#333'
+                                }
+                            },
+                            data: []
+                        }]
+                    };
+                    this.options = wordCloudOptions;
+                    return wordCloudOptions
+                },
+
+                setOptions: function (options) {
+                    this.options = options;
+                    this.chart.setOption(options);
+                },
+                update: function (data = null) {
+                    if (data == null) {
+                        this.chart.setOption(this.options);
+                        this.chart.resize();
+                        return;
+                    }
+                    if (data.length) {
+                        {#console.log(this.options)#}
+                        this.options.series[0].data = data;
+                    } else {
+                        this.options.series[0].data = [{'name': '@TEST@', 'value': 1}];
+                    }
+                    this.chart.setOption(this.options);
+                    this.chart.resize();
+                },
+                switchRegion: async function (regionId) {
+                    const data = await DataFetcher.fetchWordFrequencyData({{datatype}}, regionId);
+                    WordCloud.update(data['word_freq']);
+
+                }
+            };
+
+            const onSelect = (region) => {
+                return {
+                    click: () => {
+                        $('#wordCloudStyleDropdown').text(region.name);
+
+                        WordCloud.switchRegion(region.id)
+                    }
+                }
+            };
+
+            const EventHandlers = {
+
+                test2ButtonClick: function (datatype) {
+                    $('#test2').on('click', function () {
+                    });
+                },
+                resize: function () {
+
+                },
+            };
+
+            $(document).ready(async function () {
+                const data = await DataFetcher.fetchWordFrequencyData({{datatype}}, 0);
+                const freqData = data['word_freq'];
+                WordCloud.init();
+                let options = WordCloud.generateWordCloudConfig();
+                {#console.log(options.series[0].maskImage);#}
+                WordCloud.setOptions(options);
+                WordCloud.update(freqData);
+
+                //<!--词云图-->
+                $('a[data-bs-toggle="pill"]').on('shown.bs.tab', function (e) {
+                    if ($(e.target).attr('id') === 'v-pills-wordcloud-tab') {
+                        WordCloud.update();
+                    }
+                });
+
+
+                const dropdownListData = data['area_list'];
+                const DropdownList = window.DropdownList;
+                {#console.log(DropdownList)#}
+                DropdownList.generate($('#wordCloudDropdownList'), dropdownListData, onSelect);
+            });
+        })();
+
+    </script>
+{% endblock %}

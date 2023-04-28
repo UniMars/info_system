@@ -12,8 +12,9 @@ import jieba
 import pandas as pd
 from django.conf import settings
 from django.db import transaction, connections
+from django.db.models import Sum
 
-from datas.models import GovDoc, GovDocWordFreq, GovDocWordFreqAggr, ToutiaoDoc
+from datas.models import GovDoc, GovDocWordFreq, GovDocWordFreqAggr, ToutiaoDoc, WordHotness
 from datas.utils import get_stopwords
 from utils.json_load import load_forms
 from utils.utils import generate_id
@@ -391,3 +392,30 @@ def word_split_multiprocess_task(model_list_iterator,
             gc.collect()
             # 销毁word_model_list
     return word_total_models
+
+
+def generate_hotness(data_type: int = 1):
+    if data_type == 1:
+        hot_list = ['发展', '建设', '经济', '企业', '数字', '新', '产业', '创新', '工作', '推进', ]
+        wordfreq = GovDocWordFreq
+    else:
+        return None
+    end_year = datetime.datetime.now().year
+    start_year = end_year - 10
+
+    for year in range(start_year, end_year + 1):
+        start_date = datetime.datetime(year, 1, 1)
+        end_date = datetime.datetime(year + 1, 1, 1) - datetime.timedelta(days=1)
+
+        yearly_word_freqs = (
+            wordfreq.objects.filter(word__in=hot_list, area="TOTAL", pub_date__range=(start_date, end_date))
+            .values('word').annotate(yearly_freq=Sum('freq')))
+
+        with transaction.atomic():
+            for item in yearly_word_freqs:
+                word = item['word']
+                yearly_freq = item['yearly_freq']
+                yearly_word_freq, created = WordHotness.objects.get_or_create(word=word, year=year)
+                yearly_word_freq.freq = yearly_freq
+                yearly_word_freq.save()
+        print(f"year{year} done!")

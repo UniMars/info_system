@@ -81,6 +81,19 @@ class Operations(models.Model):
         super().save(*args, **kwargs)
 
 
+class WordHotness(models.Model):
+    datetype = models.ForeignKey(DataType, on_delete=models.CASCADE)
+    word = models.CharField(max_length=500)
+    year = models.IntegerField()
+    freq = models.IntegerField(default=0)
+
+    class Meta:
+        app_label = 'datas'  # 应用程序名称
+
+    def __str__(self):
+        return f"{self.datetype}.{self.word}.{self.year}"
+
+
 class GovDoc(models.Model):
     area = models.CharField(max_length=50, blank=True)
     types = models.CharField(max_length=500, blank=True)

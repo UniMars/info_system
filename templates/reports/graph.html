@@ -1,0 +1,68 @@
+{% extends 'template/base.html' %}
+{% load static %}
+
+{% block title %}报告发展指数图表{% endblock %}
+
+{% block head %}
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+{% endblock %}
+
+{% block navbar %}
+    {% include 'template/navbar.html' with active=5 %}
+{% endblock %}
+
+{% block content %}
+
+    <h3>数字经济发展指数可视化展示</h3>
+    {#    <form>#}
+    {#        <select name="options">#}
+    {#            <option value="../数字经济数据汇总.xlsx [&quot;地区&quot;,&quot;基础设施指数&quot;,&quot;数字产业发展指数&quot;,&quot;产业融合指数&quot;,&quot;发展环境指数&quot;,&quot;数字经济发展指数&quot;] 4">#}
+    {#                数字经济发展指数#}
+    {#            </option>#}
+    {#            <option value="../数字经济数据汇总.xlsx [&quot;地区&quot;,&quot;互联网基础设施&quot;,&quot;政府数据开放&quot;,&quot;新型基础设施&quot;,&quot;基础设施指数&quot;] 0">#}
+    {#                基础设施指数#}
+    {#            </option>#}
+    {#            <option value="../数字经济数据汇总.xlsx [&quot;地区&quot;,&quot;产业主体&quot;,&quot;产业变化&quot;,&quot;产业创新&quot;,&quot;数字产业发展指数&quot;] 1">#}
+    {#                数字产业发展指数#}
+    {#            </option>#}
+    {#            <option value="../数字经济数据汇总.xlsx [&quot;地区&quot;,&quot;第一产业融合&quot;,&quot;第二产业融合&quot;,&quot;第三产业融合&quot;,&quot;产业融合指数&quot;] 2">#}
+    {#                产业融合指数#}
+    {#            </option>#}
+    {#            <option value="../数字经济数据汇总.xlsx [&quot;地区&quot;,&quot;政策环境&quot;,&quot;数字环境&quot;,&quot;社会环境&quot;,&quot;发展环境指数&quot;] 3">#}
+    {#                发展环境指数#}
+    {#            </option>#}
+    {#        </select>#}
+    {#        <input type="submit" value="Submit" id="">#}
+    {#    </form>#}
+    <button id="generateGraph">submit</button>
+    <div id="chart" style="width:1000px; padding: 10px;
+        height:650px; margin: auto  ">
+        {{ chart|safe }}
+    </div>
+
+{% endblock %}
+
+{% block script %}
+    <script>
+        $(document).ready(async function () {
+
+            $('#generateGraph').on('click', function () {
+                $.ajax({
+                    url: `/report/graph/generate_graph`,
+                    method: 'GET',
+                    {#data: {task_type: 'word_split', task_params: ''},#}
+                    success: function () {
+                        console.log('success')
+                        {#console.log(data)#}
+
+                    },
+                    error: function (xhr, status, error) {
+                        console.error('Error:', error);
+                    }
+                });
+            });
+        })
+    </script>
+{% endblock %}
+
