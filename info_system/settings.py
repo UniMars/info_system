@@ -162,8 +162,8 @@ LOGGING = {
         'infofile': {
             'level': 'INFO',
             'class': FILE_HANDLER,
-            'filename': BASE_DIR / 'logs/info.log',
-            "maxBytes": 1024 * 1024 * 512,
+            'filename': BASE_DIR / 'logs/info/info.log',
+            "maxBytes": 1024 * 1024 * 128,
             "backupCount": 5,
             "encoding": "utf-8",
             'formatter': 'simple',
@@ -171,8 +171,8 @@ LOGGING = {
         'errorfile': {
             'level': 'ERROR',
             'class': FILE_HANDLER,
-            'filename': BASE_DIR / 'logs/error.log',
-            "maxBytes": 1024 * 1024 * 512,
+            'filename': BASE_DIR / 'logs/error/error.log',
+            "maxBytes": 1024 * 1024 * 128,
             "backupCount": 5,
             "encoding": "utf-8",
             'formatter': 'verbose',
@@ -180,8 +180,8 @@ LOGGING = {
         'debugfile': {
             'level': 'DEBUG',
             'class': FILE_HANDLER,
-            'filename': BASE_DIR / 'logs/debug.log',
-            "maxBytes": 1024 * 1024 * 512,
+            'filename': BASE_DIR / 'logs/debug/debug.log',
+            "maxBytes": 1024 * 1024 * 128,
             "backupCount": 5,
             "encoding": "utf-8",
             'formatter': 'verbose',
@@ -189,8 +189,17 @@ LOGGING = {
         'db_file': {
             'level': 'DEBUG',
             'class': FILE_HANDLER,
-            'filename': BASE_DIR / 'logs/db_debug.log',
-            "maxBytes": 1024 * 1024 * 512,
+            'filename': BASE_DIR / 'logs/db_debug/db_debug.log',
+            "maxBytes": 1024 * 1024 * 128,
+            "backupCount": 5,
+            "encoding": "utf-8",
+            'formatter': 'verbose',
+        },
+        'task_file': {
+            'level': 'DEBUG',
+            'class': FILE_HANDLER,
+            'filename': BASE_DIR / 'logs/celery/tasks.log',
+            "maxBytes": 1024 * 1024 * 128,
             "backupCount": 5,
             "encoding": "utf-8",
             'formatter': 'verbose',
@@ -210,6 +219,10 @@ LOGGING = {
             'level': 'DEBUG',
             'propagate': True,
         },
+        'tasks': {
+            'handlers': ['console', 'task_file'],
+            'level': 'DEBUG',
+        }
     },
     'formatters': {
         'verbose': {
@@ -226,3 +239,12 @@ LOGGING = {
         },
     },
 }
+
+# Celery后台任务
+# 使用 Redis 作为消息中间件
+CELERY_BROKER_URL = 'redis://localhost:6379/0'
+BROKER_URL = 'redis://localhost:6379/0'
+CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
