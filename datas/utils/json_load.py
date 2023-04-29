@@ -8,7 +8,7 @@ from datetime import date, datetime
 import chardet
 import pandas as pd
 
-from utils.utils import data_cleaning
+from datas.utils.utils import data_cleaning
 
 
 class LoadDatetime(json.JSONEncoder):

@@ -15,9 +15,9 @@ from django.db import transaction, connections
 from django.db.models import Sum
 
 from datas.models import GovDoc, GovDocWordFreq, GovDocWordFreqAggr, ToutiaoDoc, WordHotness
-from datas.utils import get_stopwords, get_gov_doc_name, unpack_result, convert_date, read_wrong_result
-from utils.json_load import load_forms
-from utils.utils import generate_id
+from datas.utils.json_load import load_forms
+from datas.utils.utils import generate_id, get_stopwords, get_gov_doc_name, unpack_result, convert_date, \
+    read_wrong_result
 
 # logger = logging.getLogger('django')
 logger = logging.getLogger('tasks')

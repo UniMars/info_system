@@ -14,11 +14,10 @@ from urllib.parse import quote
 import openpyxl as op
 import xlwt
 from bs4 import BeautifulSoup
+from datas.utils.utils import data_cleaning
 from django.conf import settings
 from selenium import webdriver
 from selenium.webdriver.common.by import By
-
-from utils.utils import data_cleaning
 
 start_time = time.time()
 keyword = '数字经济'
