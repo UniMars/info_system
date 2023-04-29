@@ -7,3 +7,6 @@
 /templates/test.html
 test.py
 .env
+/celerybeat-schedule.bak
+/celerybeat-schedule.dat
+/celerybeat-schedule.dir
