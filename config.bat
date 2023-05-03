@@ -1,6 +1,7 @@
 pipreqs . --encoding=utf-8 --force
 python manage.py makemigrations
 python manage.py migrate
+httpd -k restart
 net stop celery_worker
 net stop celery_beat
 net start celery_worker
