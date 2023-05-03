@@ -58,9 +58,10 @@ def convert_to_dict(res_list: list):
     return res_dict
 
 
-def load_forms(path: str, if_move=False):
+def load_forms(path: str, if_move=True):
     res = {}
-    for root, dirs, files in os.walk(path):
+    for root, dirs, files in os.walk(path, topdown=True):
+        dirs.clear()
         for file in files:
             dir_str = os.path.join(root, file)
             if dir_str.endswith(".csv"):
@@ -74,7 +75,8 @@ def load_forms(path: str, if_move=False):
                 except Exception as e:
                     print(e)
                 result_dict = convert_to_dict(result)
-                res[file.split(".csv")[0]] = result_dict
+                result_name = file.split(".csv")[0]
+                # res[file.split(".csv")[0]] = result_dict
 
             elif dir_str.endswith(".xlsx") or dir_str.endswith(".xls"):
                 print(dir_str)
@@ -85,12 +87,16 @@ def load_forms(path: str, if_move=False):
                 # data = data.astype(str)
                 result = [data.columns.tolist()] + data.to_numpy().tolist()
                 result_dict = convert_to_dict(result)
-                res[file.split(".xls")[0]] = result_dict
+                result_name = file.split(".xlsx")[0] if dir_str.endswith(".xlsx") else file.split(".xls")[0]
+                # res[file.split(".xls")[0]] = result_dict
+            else:
+                result_dict = {}
+                result_name = ""
 
             # move file to move_path
             if if_move:
-                move_path = os.path.join(root, '/processed')
+                move_path = os.path.join(root, 'processed')
                 if not os.path.exists(move_path):
                     os.makedirs(move_path)
                 shutil.move(os.path.join(root, file), move_path)
-    return res
+            yield result_name, result_dict
