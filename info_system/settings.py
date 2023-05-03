@@ -146,9 +146,19 @@ USE_TZ = False
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+
 # 日志配置
-if not os.path.exists(BASE_DIR / 'logs'):
-    os.mkdir(BASE_DIR / 'logs')
+def judge_exist(path):
+    if not os.path.exists(path):
+        os.mkdir(path)
+
+
+judge_exist(BASE_DIR / 'logs')
+judge_exist(BASE_DIR / 'logs/info')
+judge_exist(BASE_DIR / 'logs/error')
+judge_exist(BASE_DIR / 'logs/debug')
+judge_exist(BASE_DIR / 'logs/db_debug')
+judge_exist(BASE_DIR / 'logs/celery')
 
 DEFAULT_CHARSET = 'utf-8'
 FILE_HANDLER = "concurrent_log_handler.ConcurrentRotatingFileHandler"
