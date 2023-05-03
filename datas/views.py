@@ -1,14 +1,17 @@
 # -*- coding: utf-8 -*-
 import datetime
 import logging
+import os
 
+from django.conf import settings
 from django.core.cache import cache
 from django.http import JsonResponse
 from django.shortcuts import render, get_object_or_404
 from django.views.decorators.cache import cache_page
+from django.views.decorators.csrf import csrf_exempt
 
 from .models import GovDoc, GovDocWordFreqAggr, DataType, WordHotness
-from .tasks import gov_data_import, word_split
+from .tasks import gov_data_import, word_split, toutiao_data_import
 
 # import multiprocessing
 
@@ -47,6 +50,35 @@ def handle_task_request(request, data_id):
         result = {'code': 404, 'message': 'Invalid task type'}
 
     return JsonResponse(result)
+
+
+@csrf_exempt
+def upload_file(request, data_id):
+    if request.method == 'POST':
+        uploaded_file = request.FILES['uploadFile']
+        file_name = uploaded_file.name
+
+        # 保存文件到服务器
+        file_dir = os.path.join(settings.BASE_DIR, 'DATA', str(data_id))
+        file_path = os.path.join(file_dir, file_name)
+        os.makedirs(os.path.dirname(file_path), exist_ok=True)
+        with open(file_path, 'wb+') as destination:
+            for chunk in uploaded_file.chunks():
+                destination.write(chunk)
+        if data_id == 1:
+            print('gov_data_import')
+            gov_data_import.delay(file_dir)
+        elif data_id == 2:
+            print('toutiao_data_import')
+            toutiao_data_import.delay(file_dir)
+        elif data_id == 3:
+            print('weibo_data_import')
+        else:
+            print('data_id error')
+        # 返回 JSON 响应
+        return JsonResponse({'status': 'success', 'filename': file_name})
+    else:
+        return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
 
 
 @cache_page(7200)
@@ -99,7 +131,7 @@ def table_update(request, data_id):
         return JsonResponse(data, safe=False)
 
 
-# @cache_page(7200)
+@cache_page(7200)
 def wordcloud(request, data_id):
     if data_id != 1:
         return JsonResponse({'word_freq': [{'name': '@TEST@', 'value': 1}]})
