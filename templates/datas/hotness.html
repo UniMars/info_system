@@ -74,7 +74,7 @@
                     // eslint-disable-next-line no-unused-vars
                     this.options = {
                         title: {
-                            text: '热词关注跟踪'
+                            text: '热词：'
                         },
                         tooltip: {},
                         xAxis: {
@@ -112,6 +112,7 @@
                     let item = freq_dict[key_word]
                     let keys = Object.keys(item);
                     let values = Object.values(item);
+                    this.options.title.text = `热词：${key_word}`;
                     this.options.xAxis.data = keys;
                     this.options.series[0].data = values;
                     this.chart.setOption(this.options);
