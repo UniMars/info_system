@@ -28,6 +28,8 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [
     BASE_DIR / "static",
 ]
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / "media"
 
 # 安全警告：在生产环境中要保护好使用的密钥！
 load_dotenv(dotenv_path=BASE_DIR / '.env')
@@ -36,7 +38,7 @@ if not SECRET_KEY:
     SECRET_KEY = secrets.token_hex(64)
 
 # 安全警告：不要在生产环境中开启调试模式！
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = ['*']
 # "127.0.0.1", "10.4.32.140"
