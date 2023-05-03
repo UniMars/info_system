@@ -1,10 +1,11 @@
 /DATA/
+/media
 /logs/*
 /staticfiles/
 .git/
 /.idea/
 **/__pycache__/
-/templates/test.html
+test.html
 test.py
 .env
 /celerybeat-schedule.bak
