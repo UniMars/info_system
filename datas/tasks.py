@@ -15,24 +15,22 @@ from django.db import transaction, connections
 from django.db.models import Sum
 
 from datas.models import GovDoc, GovDocWordFreq, GovDocWordFreqAggr, ToutiaoDoc, WordHotness
-from datas.utils import get_stopwords, get_gov_doc_name, unpack_result, convert_date, read_wrong_result
-from utils.json_load import load_forms
-from utils.utils import generate_id
+from datas.utils.json_load import load_forms
+from datas.utils.utils import generate_id, get_stopwords, get_gov_doc_name, unpack_result, convert_date, \
+    read_wrong_result
 
 # logger = logging.getLogger('django')
 logger = logging.getLogger('tasks')
 
 
+@shared_task
 def gov_data_import(filepath: str = ""):
     if not filepath:
         filepath = settings.BASE_DIR / "DATA/政府网站数据/数据汇总"
     logger.info("政府汇总数据导入中")
     logger.info(f"读取文件：{filepath}")
     try:
-        data_json = load_forms(filepath)
-        # time_pattern = re.compile(r'\W*\d{4}年\d+月\d{1,2}日\W*')
-
-        for name_key, value_list in data_json.items():
+        for name_key, value_list in load_forms(filepath, if_move=True):
             area = get_gov_doc_name(name_key)
             key_map = {
                 'link': {"alternatives": ['link', '链接', 'url', 'pagelink_id'], "read_type": "or", },
@@ -83,15 +81,17 @@ def gov_data_import(filepath: str = ""):
         return "error"
 
 
+@shared_task
 def toutiao_data_import(rootpath: str = ""):
     if not rootpath:
-        rootpath = settings.BASE_DIR / "DATA/头条"
+        rootpath = settings.BASE_DIR / "DATA/2"
     logger.info("头条数据导入中")
     logger.info(f"读取文件：{rootpath}")
     try:
-        data_json = load_forms(rootpath)
-        for name_key, value_list in data_json.items():
-
+        # data_json = load_forms(rootpath, if_move=False)
+        for name_key, value_list in load_forms(rootpath, if_move=True):
+            unique_set = set()
+            bulk_list = []
             key_map = {
                 'title': {"alternatives": ['title', '标题'], "read_type": "or", },
                 'link': {"alternatives": ['url', 'link', '链接', 'pagelink_id'], "read_type": "or", },
@@ -102,7 +102,6 @@ def toutiao_data_import(rootpath: str = ""):
                 'content': {"alternatives": ['context', '正文内容'], "read_type": "or", },
                 'comment': {"alternatives": ['comment', '评论'], "read_type": "or", },
             }
-
             for item in value_list:
                 result = {
                     'title': '',
@@ -128,6 +127,9 @@ def toutiao_data_import(rootpath: str = ""):
                     pub_date = datetime.datetime(1900, 1, 1)
                 if ToutiaoDoc.objects.filter(area=area, title=title, pub_date=pub_date).exists():
                     continue
+                if (title, pub_date) in unique_set:  # 去重
+                    continue
+                unique_set.add((title, pub_date))
                 update_fields = {
                     'title': title,
                     'link': link,
@@ -139,7 +141,12 @@ def toutiao_data_import(rootpath: str = ""):
                     'comment': comment
                 }
                 data_model = ToutiaoDoc(**update_fields)
-                data_model.save()
+                bulk_list.append(data_model)
+                # data_model.save()
+            with transaction.atomic():
+                ToutiaoDoc.objects.bulk_create(bulk_list)
+                bulk_list.clear()
+            print(f"头条数据导入完成：{name_key}")
     except Exception as e:
         logging.error(f"ERROR:{e}")
         return "error"
@@ -151,6 +158,7 @@ def toutiao_data_import(rootpath: str = ""):
 # 使用生成器：生成器可以避免在内存中同时存储所有数据。可以使用生成器来逐个读取数据并进行处理。
 # 使用列表解析器：列表解析器可以用更少的代码完成列表的创建，而且在某些情况下，列表解析器比for循环更快。
 # 使用内存映射文件：内存映射文件可以将大型文件映射到虚拟内存中。这样，可以像操作常规数组一样操作文件中的数据，而不必将整个文件读入内存。
+@shared_task
 def word_split():
     logger.info("start word splitting")
     cpu_count = multiprocessing.cpu_count() * 2 if multiprocessing.cpu_count() < 17 else 32
@@ -324,6 +332,7 @@ def word_split_multiprocess_task(model_list_iterator,
     return word_total_models
 
 
+@shared_task
 def generate_hotness(data_type: int = 1):
     if data_type == 1:
         hot_list = ['发展', '建设', '经济', '企业', '数字', '新', '产业', '创新', '工作', '推进', ]

@@ -1,8 +1,8 @@
 chardet~=5.1.0
 Django~=4.2
 jieba~=0.42.1
-jieba_fast==0.53
-pandas~=2.0.0
+jieba_fast~=0.53
+pandas~=2.0.1
 python-dotenv~=1.0.0
 mysqlclient~=2.1.1
 django-redis~=5.2.0

@@ -138,9 +138,9 @@ class ToutiaoDoc(models.Model):
     search_keyword = models.CharField(max_length=50, blank=True)
     link = models.TextField(blank=True)
     title = models.CharField(max_length=500, blank=True)
+    content = models.TextField(blank=True)
     pub_date = models.DateTimeField(null=True, blank=True)
     source = models.CharField(max_length=50, blank=True)
-    context = models.TextField(blank=True)
     comment = models.TextField(blank=True)
     is_split = models.BooleanField(default=False, blank=True)
 

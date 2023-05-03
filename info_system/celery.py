@@ -19,9 +19,9 @@ app.config_from_object('django.conf:settings')
 app.autodiscover_tasks(lambda: settings.INSTALLED_APPS)
 
 app.conf.beat_schedule = {
-    'test_task': {
-        'task': 'datas.tasks.test_celery_task',
-        'schedule': timedelta(seconds=3),
-        'args': (),
-    },
+    # 'test_task': {
+    #     'task': 'datas.tasks.test_celery_task',
+    #     'schedule': timedelta(seconds=3),
+    #     'args': (),
+    # },
 }
