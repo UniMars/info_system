@@ -5,16 +5,19 @@ import logging
 import multiprocessing
 import os
 import re
+import time
 from collections import defaultdict
 from typing import Union
 
 import jieba
 from celery import shared_task
 from django.conf import settings
+from django.core.cache import cache
 from django.db import transaction, connections
 from django.db.models import Sum
 
-from datas.models import GovDoc, GovDocWordFreq, GovDocWordFreqAggr, ToutiaoDoc, WordHotness
+from datas.models import GovDoc, GovDocWordFreq, ToutiaoDoc, WordHotness, ToutiaoDocWordFreq, ToutiaoDocWordFreqAggr, \
+    GovDocWordFreqAggr
 from datas.utils.json_load import load_forms
 from datas.utils.utils import generate_id, get_stopwords, get_gov_doc_name, unpack_result, convert_date, \
     read_wrong_result
@@ -26,7 +29,7 @@ logger = logging.getLogger('tasks')
 @shared_task
 def gov_data_import(filepath: str = ""):
     if not filepath:
-        filepath = settings.BASE_DIR / "DATA/政府网站数据/数据汇总"
+        filepath = settings.BASE_DIR / "DATA/1"
     logger.info("政府汇总数据导入中")
     logger.info(f"读取文件：{filepath}")
     try:
@@ -79,12 +82,14 @@ def gov_data_import(filepath: str = ""):
     except Exception as e:
         logging.error(f"ERROR:{e}")
         return "error"
+    finally:
+        word_split(GovDoc, GovDocWordFreq, GovDocWordFreqAggr)
 
 
 @shared_task
 def toutiao_data_import(rootpath: str = ""):
     if not rootpath:
-        rootpath = settings.BASE_DIR / "DATA/2"
+        rootpath = settings.BASE_DIR / "DATA/3"
     logger.info("头条数据导入中")
     logger.info(f"读取文件：{rootpath}")
     try:
@@ -150,6 +155,8 @@ def toutiao_data_import(rootpath: str = ""):
     except Exception as e:
         logging.error(f"ERROR:{e}")
         return "error"
+    finally:
+        word_split(ToutiaoDoc, ToutiaoDocWordFreq, ToutiaoDocWordFreqAggr)
 
 
 # 使用chunked方法分批获取数据库记录，避免一次性加载大量数据占用内存
@@ -159,15 +166,16 @@ def toutiao_data_import(rootpath: str = ""):
 # 使用列表解析器：列表解析器可以用更少的代码完成列表的创建，而且在某些情况下，列表解析器比for循环更快。
 # 使用内存映射文件：内存映射文件可以将大型文件映射到虚拟内存中。这样，可以像操作常规数组一样操作文件中的数据，而不必将整个文件读入内存。
 @shared_task
-def word_split():
-    logger.info("start word splitting")
+def word_split(doc, word_freq, word_freq_aggr):
+    doc_str = doc.__name__
+    logger.info(f"start {doc_str} word splitting")
     cpu_count = multiprocessing.cpu_count() * 2 if multiprocessing.cpu_count() < 17 else 32
 
     # 使用ThreadPoolExecutor替代multiprocessing.Pool
     with concurrent.futures.ThreadPoolExecutor(max_workers=cpu_count) as executor:
         futures = []
         futures_dict = {}
-
+        # 加载jieba_fast
         try:
             import jieba_fast
             tokenizer = jieba_fast.Tokenizer()  # 创建分词器实例
@@ -178,9 +186,7 @@ def word_split():
         # 加载停用词
         stopwords, stop_pattern = get_stopwords()
 
-        articles = GovDoc.objects.filter(is_split=False)
-        # record_per_process = math.ceil(articles.count() / cpu_count)
-        # iterator = articles.iterator(chunk_size=articles.count() // cpu_count + 1)
+        articles = doc.objects.filter(is_split=False)
         article_count = articles.count()
         chunk_size = article_count // cpu_count + 1
         chunks = [articles[i:i + chunk_size].iterator() for i in range(0, article_count, chunk_size)]
@@ -190,6 +196,7 @@ def word_split():
             logger.debug(f"WORKER {thread} start")
             params = {
                 'model_list_iterator': chunk,
+                'word_freq': word_freq,
                 'tokenizer': tokenizer,
                 'stopwords': stopwords,
                 'stop_pattern': stop_pattern,
@@ -200,7 +207,7 @@ def word_split():
             futures_dict[str(thread)] = future
             thread += 1
 
-        results = []
+        # results = []
         # 等待所有线程完成
         output_file = os.path.join(settings.BASE_DIR, 'logs', 'wrong_result.txt')
         for future in concurrent.futures.as_completed(futures):
@@ -220,19 +227,24 @@ def word_split():
                 word_aggr_updates = defaultdict(lambda: defaultdict(int))
                 try:
                     for uid in uid_batch:
-                        model = GovDocWordFreq.objects.get(id=uid)
+                        model = word_freq.objects.get(id=uid)
                         word, freq, record_id = model.word, model.freq, model.record_id
-                        area = GovDoc.objects.get(id=record_id).area
-                        # TODO sql缓存 redis等缓存系统
+                        # 尝试从缓存获取area值
+                        cache_key = f'{doc_str}_area_{record_id}'
+                        area = cache.get(cache_key)
+                        if area is None:
+                            area = doc.objects.get(pk=record_id).area
+                            cache.set(cache_key, doc.area, 60 * 60 * 24 * 2)
+                        # area = doc.objects.get(id=record_id).area
                         word_aggr_updates[word][area] += freq
                         word_aggr_updates[word]['TOTAL'] += freq
                     # Prepare the list of objects to be updated
                     update_list = []
                     for word, freq_dict in word_aggr_updates.items():
                         for area, freq in freq_dict.items():
-                            aggr_obj, created = GovDocWordFreqAggr.objects.get_or_create(word=word,
-                                                                                         area=area,
-                                                                                         defaults={'freq': 0})
+                            aggr_obj, created = word_freq_aggr.objects.get_or_create(word=word,
+                                                                                     area=area,
+                                                                                     defaults={'freq': 0})
                             aggr_obj.freq += freq_dict[area]
                             update_list.append(aggr_obj)
                 except Exception as e:
@@ -245,7 +257,7 @@ def word_split():
                         # Perform the bulk update
                         with transaction.atomic():
                             try:
-                                GovDocWordFreqAggr.objects.bulk_update(update_list, ['freq'])
+                                word_freq_aggr.objects.bulk_update(update_list, ['freq'])
                             except Exception as e:
                                 transaction.set_rollback(True)
                                 if retries == max_retries - 1:
@@ -265,6 +277,7 @@ def word_split():
 
 
 def word_split_multiprocess_task(model_list_iterator,
+                                 doc_word_freq_model,
                                  tokenizer: Union[jieba.Tokenizer, 'jieba_fast.Tokenizer'] = None,
                                  stopwords: Union[set, list] = None,
                                  stop_pattern: re.compile = re.compile(r'\s'),
@@ -278,15 +291,13 @@ def word_split_multiprocess_task(model_list_iterator,
     # 关闭连接并确保重新建立连接
     connection.close()
     connection.ensure_connection()
-    # 使用游标执行原生SQL查询
-    # with connection.cursor() as _:
 
     word_total_models = []
     gc_count = 0
+    time1 = time.time()
     try:
         for article in model_list_iterator:
             # 分词并词频统计
-            # time1=time.time()
             word_freq = defaultdict(int)
             for word in tokenizer.cut(article.content):
                 # 去除停用词和数字,标点符号,并转换为小写
@@ -295,29 +306,23 @@ def word_split_multiprocess_task(model_list_iterator,
                 word = word if not word.isalpha() else word.lower()
                 # 词频统计
                 word_freq[word] += 1
-            # time2=time.time()
-            # logger.debug(f"ARTICLE: {article.id} jieba cost {time2-time1}")
-            # time3=time.time()
+
             # 保存词频统计结果写入数据表
             word_model_list = []
             for word, freq in word_freq.items():
                 uid = generate_id(word, article.id)
-                if GovDocWordFreq.objects.filter(id=uid).exists():
+                if doc_word_freq_model.objects.filter(id=uid).exists():
                     continue
                 else:
-                    word_freq_model = GovDocWordFreq(id=uid, word=word, freq=freq, record=article)
-                    word_model_list.append(word_freq_model)
+                    word_model_list.append(
+                        doc_word_freq_model(id=uid, word=word, freq=freq, record=article, pub_date=article.pub_date))
                     word_total_models.append(uid)
-            # time4 = time.time()
-            # logger.debug(f"ARTICLE: {article.id} convert cost {time4 - time3}")
-            # time5 = time.time()
+
             with transaction.atomic():
                 if word_model_list:
-                    GovDocWordFreq.objects.bulk_create(word_model_list)
+                    doc_word_freq_model.objects.bulk_create(word_model_list)
                 article.is_split = True
                 article.save(update_fields=['is_split'])
-                # time6 = time.time()
-                # logger.debug(f"ARTICLE: {article.id} save cost {time6 - time5}")
                 logger.debug(f"article:{article.id} save success with WORKER:{worker}")
             del word_model_list
             del word_freq
@@ -329,6 +334,8 @@ def word_split_multiprocess_task(model_list_iterator,
             gc_count = 0
             gc.collect()
             # 销毁word_model_list
+        time2 = time.time()
+        logger.debug(f"WORKER:{worker} cost {time2 - time1}")
     return word_total_models
 
 
