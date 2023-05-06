@@ -11,5 +11,6 @@ urlpatterns = [
     path('<int:data_id>/wordCloud', views.wordcloud, name="wordcloud"),
     path('<int:data_id>/wordHotness', views.get_word_hotness, name="wordHotness"),
     path('<int:data_id>/upload', views.upload_file, name='upload_file'),
+    path('<int:data_id>/processUploadQueue', views.process_upload_queue, name='process_upload_queue'),
 
 ]

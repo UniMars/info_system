@@ -10,8 +10,10 @@ from django.shortcuts import render, get_object_or_404
 from django.views.decorators.cache import cache_page
 from django.views.decorators.csrf import csrf_exempt
 
-from .models import GovDoc, GovDocWordFreqAggr, DataType, WordHotness
-from .tasks import gov_data_import, word_split, toutiao_data_import
+from .apps import file_upload_queue, file_upload_start_event
+from .models import GovDoc, GovDocWordFreqAggr, DataType, WordHotness, WeiboDoc, ToutiaoDoc
+from .tasks import gov_data_import, word_split, toutiao_data_import, test_celery_task
+from .utils.utils import push_queue
 
 # import multiprocessing
 
@@ -65,17 +67,11 @@ def upload_file(request, data_id):
         with open(file_path, 'wb+') as destination:
             for chunk in uploaded_file.chunks():
                 destination.write(chunk)
-        if data_id == 1:
-            print('gov_data_import')
-            gov_data_import.delay(file_dir)
-        elif data_id == 2:
-            print('toutiao_data_import')
-            toutiao_data_import.delay(file_dir)
-        elif data_id == 3:
-            print('weibo_data_import')
-        else:
-            print('data_id error')
+        logger.info(f"File {file_name} saved to {file_path}")
+        # logger.info(data_id)
+
         # 返回 JSON 响应
+        logger.info("upload finish")
         return JsonResponse({'status': 'success', 'filename': file_name})
     else:
         return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
@@ -93,23 +89,44 @@ def table_update(request, data_id):
             '4': "level",
             '5': "title",
         }
-        try:
-            draw = int(request.GET.get('draw', 1))
-            start = int(request.GET.get('start', 0))
-            length = int(request.GET.get('length', 10))
-            order_column = request.GET.get('order[0][column]')
-            order_direction = request.GET.get('order[0][dir]')
-            order_column_str = order_column_dict[order_column]
-            # search_value = request.GET.get('search[value]', '')
-            queryset = cache.get('gov_doc_total')
-            if not queryset:
-                queryset = GovDoc.objects.all().order_by('-pub_date')[:1000]
-                cache.set('gov_doc_total', queryset, 7200)
-            sorted_queryset = sorted(queryset, key=lambda x: getattr(x, order_column_str),
-                                     reverse=True if order_direction == 'desc' else False)
-
-            total_records = len(sorted_queryset)
-            page_number = (start // length) + 1
+        queryset = cache.get('gov_doc_total')
+        doc = GovDoc
+        cache_key = 'gov_doc_total'
+    elif data_id == 2:
+        order_column_dict = {}
+        queryset = cache.get('gov_doc_total')
+        doc = WeiboDoc
+        cache_key = 'weibo_doc_total'
+    elif data_id == 3:
+        order_column_dict = {
+            '0': "pub_date",
+            '1': "area",
+            '2': "search_keyword",
+            '3': "source",
+            '4': "title",
+        }
+        queryset = cache.get('toutiao_doc_total')
+        doc = ToutiaoDoc
+        cache_key = 'toutiao_doc_total'
+    else:
+        logger.error("TABLE UPDATE ERROR: Invalid data_id")
+        return JsonResponse(data, safe=False)
+    try:
+        draw = int(request.GET.get('draw', 1))
+        start = int(request.GET.get('start', 0))
+        length = int(request.GET.get('length', 10))
+        order_column = request.GET.get('order[0][column]')
+        order_direction = request.GET.get('order[0][dir]')
+        order_column_str = order_column_dict[order_column]
+        # search_value = request.GET.get('search[value]', '')
+        if not queryset:
+            queryset = doc.objects.all().order_by('-pub_date')[:1000]
+            cache.set(cache_key, queryset, 7200)
+        sorted_queryset = sorted(queryset, key=lambda x: getattr(x, order_column_str),
+                                 reverse=True if order_direction == 'desc' else False)
+        total_records = len(sorted_queryset)
+        page_number = (start // length) + 1
+        if data_id == 1:
             data = [{'发布日期': obj.pub_date,
                      '地区': obj.area,
                      '类型': obj.types,
@@ -117,17 +134,19 @@ def table_update(request, data_id):
                      '来源': obj.source,
                      '级别': obj.level, }
                     for obj in sorted_queryset[(page_number - 1) * length:page_number * length]]
-            response = {'draw': draw, 'recordsTotal': total_records, 'recordsFiltered': total_records, 'data': data}
-            return JsonResponse(response)
-        except Exception as e:
-            logger.error(f"TABLE UPDATE ERROR:{e}")
-            return JsonResponse(data, safe=False)
-    elif data_id == 2:
-        return JsonResponse(data, safe=False)
-    elif data_id == 3:
-        return JsonResponse(data, safe=False)
-    else:
-        logger.error("TABLE UPDATE ERROR: Invalid data_id")
+        elif data_id == 2:
+            data = []
+        elif data_id == 3:
+            data = [{'发布日期': obj.pub_date,
+                     '地区': obj.area,
+                     '搜索关键词': obj.search_keyword,
+                     '标题': obj.title,
+                     '来源': obj.source, }
+                    for obj in sorted_queryset[(page_number - 1) * length:page_number * length]]
+        response = {'draw': draw, 'recordsTotal': total_records, 'recordsFiltered': total_records, 'data': data}
+        return JsonResponse(response)
+    except Exception as e:
+        logger.error(f"TABLE UPDATE ERROR:{e}")
         return JsonResponse(data, safe=False)
 
 
@@ -194,3 +213,26 @@ def get_word_hotness(request, data_id):
                 word_freq[word][item['year']] = item['freq']
     # data = [{'word': item['word'], 'freq': item['freq'], 'year': item['year']} for item in results]
     return JsonResponse({'word_freq': word_freq})
+
+
+def process_upload_queue(request, data_id):
+    file_dir = os.path.join(settings.BASE_DIR, 'DATA', str(data_id))
+    if data_id == 1:
+        logger.info('gov_data_import')
+        push_queue(queue=file_upload_queue, start_event=file_upload_start_event, task=gov_data_import,
+                   args=(file_dir,))
+        return JsonResponse({'status': 'success', 'msg': 'gov_data_import'})
+    elif data_id == 2:
+        logger.info('weibo_data_import')
+        push_queue(queue=file_upload_queue, start_event=file_upload_start_event, task=test_celery_task,
+                   args=(file_dir, '11111', '22222'))
+        return JsonResponse({'status': 'success', 'msg': 'weibo_data_import'})
+    elif data_id == 3:
+        logger.info('toutiao_data_import')
+        push_queue(queue=file_upload_queue, start_event=file_upload_start_event, task=toutiao_data_import,
+                   args=(file_dir,))
+        # add_task(task=toutiao_data_import, delay=3600, args=(file_dir,))
+        return JsonResponse({'status': 'success', 'msg': 'toutiao_data_import'})
+    else:
+        logger.error('data_id error')
+        return JsonResponse({'status': 'error', 'msg': 'data_id error'})
