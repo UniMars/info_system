@@ -196,7 +196,7 @@ def word_split(doc, word_freq, word_freq_aggr):
             logger.debug(f"WORKER {thread} start")
             params = {
                 'model_list_iterator': chunk,
-                'word_freq': word_freq,
+                'doc_word_freq_model': word_freq,
                 'tokenizer': tokenizer,
                 'stopwords': stopwords,
                 'stop_pattern': stop_pattern,
