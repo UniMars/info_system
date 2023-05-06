@@ -26,9 +26,9 @@ class DataDemoConfig(AppConfig):
 def process_upload_queue():
     while True:
         if file_upload_start_event.is_set():
-            task, args = file_upload_queue.get()
+            task, delay, args = file_upload_queue.get()
             logger.info(f"process_upload_queue:task:{task}, args:{args}")
-            add_task(task, delay=1200, args=args)
+            add_task(task, delay=delay, args=args)
             # task.apply_async(args=args)
             if file_upload_queue.empty():
                 logger.info("file_upload_queue is empty")

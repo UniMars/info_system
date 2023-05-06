@@ -219,17 +219,17 @@ def process_upload_queue(request, data_id):
     file_dir = os.path.join(settings.BASE_DIR, 'DATA', str(data_id))
     if data_id == 1:
         logger.info('gov_data_import')
-        push_queue(queue=file_upload_queue, start_event=file_upload_start_event, task=gov_data_import,
+        push_queue(queue=file_upload_queue, start_event=file_upload_start_event, task=gov_data_import, delay=60,
                    args=(file_dir,))
         return JsonResponse({'status': 'success', 'msg': 'gov_data_import'})
     elif data_id == 2:
         logger.info('weibo_data_import')
-        push_queue(queue=file_upload_queue, start_event=file_upload_start_event, task=test_celery_task,
+        push_queue(queue=file_upload_queue, start_event=file_upload_start_event, task=test_celery_task, delay=60,
                    args=(file_dir, '11111', '22222'))
         return JsonResponse({'status': 'success', 'msg': 'weibo_data_import'})
     elif data_id == 3:
         logger.info('toutiao_data_import')
-        push_queue(queue=file_upload_queue, start_event=file_upload_start_event, task=toutiao_data_import,
+        push_queue(queue=file_upload_queue, start_event=file_upload_start_event, task=toutiao_data_import, delay=60,
                    args=(file_dir,))
         # add_task(task=toutiao_data_import, delay=3600, args=(file_dir,))
         return JsonResponse({'status': 'success', 'msg': 'toutiao_data_import'})
