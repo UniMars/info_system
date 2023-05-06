@@ -138,10 +138,10 @@ def read_wrong_result(output_file: str):
     return read_uids
 
 
-def push_queue(queue, start_event, task, args):
+def push_queue(queue, start_event, task, delay, args):
     logger.info(f'Pushing task {task.name} with args {args} to the queue')
     logger.info(f'Queue size: {queue.qsize()}')
-    queue.put((task, args))
+    queue.put((task, delay, args))
     start_event.set()
     logger.info(f"start_event is set to {start_event.is_set()}")
 
