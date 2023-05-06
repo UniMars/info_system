@@ -5,7 +5,7 @@
 
 {% endblock %}
 {% block navbar %}
-{% include 'template/navbar.html' with active=0 %}
+    {% include 'template/navbar.html' with active=0 %}
 {% endblock %}
 {% block content %}
     <div class=" col-right ">
@@ -33,8 +33,8 @@
                 <div class="col-md-4 mb-4">
                     <div class="card h-100">
                         <div class="card-body">
-                            <h5 class="card-title">头条数据展示</h5>
-                            <p class="card-text text-secondary">头条新闻数字经济数据</p>
+                            <h5 class="card-title">微博数据展示</h5>
+                            <p class="card-text text-secondary">31省官方微博账号关键词数据</p>
                         </div>
                         <div class="card-footer">
                             <a href="/datas/2" class="btn btn-primary">查看详情</a>
@@ -44,8 +44,8 @@
                 <div class="col-md-4 mb-4">
                     <div class="card h-100">
                         <div class="card-body">
-                            <h5 class="card-title">微博数据展示</h5>
-                            <p class="card-text text-secondary">31省官方微博账号关键词数据</p>
+                            <h5 class="card-title">头条数据展示</h5>
+                            <p class="card-text text-secondary">头条新闻数字经济数据</p>
                         </div>
                         <div class="card-footer">
                             <a href="/datas/3" class="btn btn-primary">查看详情</a>

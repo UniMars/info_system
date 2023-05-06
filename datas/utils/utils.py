@@ -6,6 +6,8 @@ import re
 import pandas as pd
 from django.conf import settings
 
+from info_system.celery import app
+
 logger = logging.getLogger('tasks')
 TIME_PATTERNS = [
     re.compile(r'((\d{2}|\d{4})[-/\\.])?\d{1,2}[-/\\.]\d{1,2}(\s*[Tt]?\d{1,2}:\d{1,2}(:\d{1,2})?(\s*(am|AM|pm|PM))?)?'),
@@ -134,3 +136,54 @@ def read_wrong_result(output_file: str):
         with open(file=output_file, mode='w', encoding='utf-8') as f:
             f.write('')
     return read_uids
+
+
+def push_queue(queue, start_event, task, args):
+    logger.info(f'Pushing task {task.name} with args {args} to the queue')
+    logger.info(f'Queue size: {queue.qsize()}')
+    queue.put((task, args))
+    start_event.set()
+    logger.info(f"start_event is set to {start_event.is_set()}")
+
+
+def find_task_by_id(task_dict, task_id):
+    for hostname, tasks in task_dict.items():
+        for task in tasks:
+            if task['request']['id'] == task_id:
+                return task
+
+
+def add_task(task, delay, args):
+    # 查询任务队列中是否存在相同任务和参数
+    existing_task = False
+    task_id = f"{task.name}-{hash(tuple(args))}"
+    # result = AsyncResult(task_id)
+    # result1 = AsyncResult("test")
+    i = app.control.inspect()
+
+    # 获取所有已注册的任务列表
+    active_tasks = i.active()
+
+    # 获取队列中未开始的任务
+    scheduled_tasks = i.scheduled()
+
+    # 获取保留的任务 (尚未运行)
+    reserved_tasks = i.reserved()
+
+    if find_task_by_id(active_tasks, task_id):
+        logger.info(f'Task {task.name} with args {args} already exists with state ACTIVE')
+        existing_task = True
+    if find_task_by_id(scheduled_tasks, task_id):
+        logger.info(f'Task {task.name} with args {args} already exists with state SCHEDULED')
+        existing_task = True
+    if find_task_by_id(reserved_tasks, task_id):
+        logger.info(f'Task {task.name} with args {args} already exists with state RESERVED')
+        existing_task = True
+
+    # 如果相同任务和参数不存在，则添加任务到队列中
+    if not existing_task:
+        task.apply_async(args=args, countdown=delay, task_id=task_id)
+        # task.delay(*args)
+        logger.info(f'Task {task.name} with args {args} added to the queue')
+    else:
+        logger.info(f'Task {task.name} with args {args} already exists')

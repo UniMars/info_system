@@ -20,8 +20,8 @@
     <div class="tab-pane fade show active" id="v-pills-form" role="tabpanel"
          aria-labelledby="v-pills-form-tab" style="width: 100% ;height: 100%">
         <button class="btn btn-primary mb-3" id="importData">导入数据</button>
-{#        <button class="btn btn-primary mb-3" id="updateTable">开始分词</button>#}
-{#        <button class="btn btn-primary mb-3" id="wordSplit">分词统计</button>#}
+        {#        <button class="btn btn-primary mb-3" id="updateTable">开始分词</button>#}
+        {#        <button class="btn btn-primary mb-3" id="wordSplit">分词统计</button>#}
         <br>
         <h1 align="center">
 
@@ -65,17 +65,39 @@
                     'scrollY': "calc(10 * 43px)",
                     'scrollX': true,
                     'scroller': {'loadingIndicator': true},
-                    columns: [
-                        {'title': "发布日期", 'data': "发布日期"},
-                        {'title': "地区", 'data': "地区"},
-                        {'title': "类型", 'data': "类型"},
-                        {'title': "来源", 'data': "来源"},
-                        {'title': "级别", 'data': "级别"},
-                        {'title': "标题", 'data': "标题"},
-                    ],
+                    columns: [],
                 },
                 init: function (datatype) {
                     this.config.ajax = `/datas/${datatype}/updateTable`;
+                    if (datatype === 1) {
+                        this.config.columns = [
+                            {'title': "发布日期", 'data': "发布日期"},
+                            {'title': "地区", 'data': "地区"},
+                            {'title': "类型", 'data': "类型"},
+                            {'title': "来源", 'data': "来源"},
+                            {'title': "级别", 'data': "级别"},
+                            {'title': "标题", 'data': "标题"},
+                        ]
+                    } else if (datatype === 2) {
+                        this.config.columns = [
+                            {'title': "发布日期", 'data': "发布日期"},
+                            {'title': "地区", 'data': "地区"},
+                            {'title': "类型", 'data': "类型"},
+                            {'title': "来源", 'data': "来源"},
+                            {'title': "标题", 'data': "标题"},
+                        ]
+                    } else if (datatype === 3) {
+                        this.config.columns = [
+                            {'title': "发布日期", 'data': "发布日期"},
+                            {'title': "地区", 'data': "地区"},
+                            {'title': "搜索关键词", 'data': "搜索关键词"},
+                            {'title': "来源", 'data': "来源"},
+                            {'title': "标题", 'data': "标题"},
+                        ]
+                    }
+                    else {
+                        console.log('error Datatype')
+                    }
                     return $('#myTable').DataTable(this.config);
                 },
                 update: function (datatype, table) {
@@ -112,7 +134,22 @@
                         note: '最大文件大小：1024MB',
                         // 添加一个上传按钮
                         doneButtonHandler: () => {
-                            uppy.upload().catch((error) => {
+                            uppy.upload().then(() => {
+                                $.ajax({
+                                    url: `/datas/${datatype}/processUploadQueue`,
+                                    method: 'GET',
+                                    success: function (data) {
+                                        // 请求成功时处理数据
+                                        console.log('请求成功，返回的数据:', data);
+                                    },
+                                    error: function (jqXHR, textStatus, errorThrown) {
+                                        // 请求失败时处理错误
+                                        console.log('请求失败，错误信息:', textStatus, errorThrown);
+                                    }
+                                });
+                                uppy.reset();
+                                window.uploadModal.hide();
+                            }).catch((error) => {
                                 console.error('Error uploading files:', error);
                             });
                         },
@@ -146,6 +183,7 @@
                     $('#importData').on('click', function () {
                         // 显示模态框
                         const modal = new bootstrap.Modal(document.getElementById('uppyModal'));
+                        window.uploadModal = modal;
                         modal.show();
                     });
                 },
