@@ -361,6 +361,11 @@ def generate_hotness(data_type: int = 1):
 
 
 @shared_task
-def test_celery_task():
+def test_celery_task(testarg1, testarg2, *args):
     logger.info("test celery task")
+    logger.info(testarg1)
+    logger.info(testarg2)
+    logger.info(args)
     logger.info(datetime.datetime.now())
+    with open('test.txt', 'a') as f:
+        f.write(f"{testarg1} {testarg2} {args} {datetime.datetime.now()}\n")
