@@ -1,10 +1,19 @@
 {% extends 'template/base.html' %}
 {% load static %}
+<!DOCTYPE html>
+<meta charset="UTF-8">
 
-{% block title %}报告发展指数图表{% endblock %}
+{% block title %}
+    数字经济发展指数
+{% endblock %}
 
 {% block head %}
+    {#    <link  href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css">#}
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.bootcdn.net/ajax/libs/echarts/5.3.0/echarts.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.3.0/extension/dataTool.min.js"></script>
+    <script src="{% static 'JavaScript/echarts/china.js' %}"></script>
+
 
 {% endblock %}
 
@@ -13,56 +22,76 @@
 {% endblock %}
 
 {% block content %}
-
-    <h3>数字经济发展指数可视化展示</h3>
-    {#    <form>#}
-    {#        <select name="options">#}
-    {#            <option value="../数字经济数据汇总.xlsx [&quot;地区&quot;,&quot;基础设施指数&quot;,&quot;数字产业发展指数&quot;,&quot;产业融合指数&quot;,&quot;发展环境指数&quot;,&quot;数字经济发展指数&quot;] 4">#}
-    {#                数字经济发展指数#}
-    {#            </option>#}
-    {#            <option value="../数字经济数据汇总.xlsx [&quot;地区&quot;,&quot;互联网基础设施&quot;,&quot;政府数据开放&quot;,&quot;新型基础设施&quot;,&quot;基础设施指数&quot;] 0">#}
-    {#                基础设施指数#}
-    {#            </option>#}
-    {#            <option value="../数字经济数据汇总.xlsx [&quot;地区&quot;,&quot;产业主体&quot;,&quot;产业变化&quot;,&quot;产业创新&quot;,&quot;数字产业发展指数&quot;] 1">#}
-    {#                数字产业发展指数#}
-    {#            </option>#}
-    {#            <option value="../数字经济数据汇总.xlsx [&quot;地区&quot;,&quot;第一产业融合&quot;,&quot;第二产业融合&quot;,&quot;第三产业融合&quot;,&quot;产业融合指数&quot;] 2">#}
-    {#                产业融合指数#}
-    {#            </option>#}
-    {#            <option value="../数字经济数据汇总.xlsx [&quot;地区&quot;,&quot;政策环境&quot;,&quot;数字环境&quot;,&quot;社会环境&quot;,&quot;发展环境指数&quot;] 3">#}
-    {#                发展环境指数#}
-    {#            </option>#}
-    {#        </select>#}
-    {#        <input type="submit" value="Submit" id="">#}
+    {#    <hr>#}
+    <br>
+    <h3 class="" align="center" style="margin-top: 10px">数字经济发展指数可视化展示</h3>
+    {#    <form method="POST" action="">#}
+    {#        {% csrf_token %}#}
+    <label>
+        <select id="options">
+            <option value="数字经济数据汇总.xlsx [&quot;地区&quot;,&quot;基础设施指数&quot;,&quot;数字产业发展指数&quot;,&quot;产业融合指数&quot;,&quot;发展环境指数&quot;,&quot;数字经济发展指数&quot;] 4">
+                数字经济发展指数
+            </option>
+            <option value="数字经济数据汇总.xlsx [&quot;地区&quot;,&quot;互联网基础设施&quot;,&quot;政府数据开放&quot;,&quot;新型基础设施&quot;,&quot;基础设施指数&quot;] 0">
+                基础设施指数
+            </option>
+            <option value="数字经济数据汇总.xlsx [&quot;地区&quot;,&quot;产业主体&quot;,&quot;产业变化&quot;,&quot;产业创新&quot;,&quot;数字产业发展指数&quot;] 1">
+                数字产业发展指数
+            </option>
+            <option value="数字经济数据汇总.xlsx [&quot;地区&quot;,&quot;第一产业融合&quot;,&quot;第二产业融合&quot;,&quot;第三产业融合&quot;,&quot;产业融合指数&quot;] 2">
+                产业融合指数
+            </option>
+            <option value="数字经济数据汇总.xlsx [&quot;地区&quot;,&quot;政策环境&quot;,&quot;数字环境&quot;,&quot;社会环境&quot;,&quot;发展环境指数&quot;] 3">
+                发展环境指数
+            </option>
+        </select>
+    </label>
+    {#    <button id="submit">提交</button>#}
     {#    </form>#}
-    <button id="generateGraph">submit</button>
     <div id="chart" style="width:1000px; padding: 10px;
         height:650px; margin: auto  ">
         {{ chart|safe }}
     </div>
-
 {% endblock %}
 
 {% block script %}
     <script>
-        $(document).ready(async function () {
+        (function () {
+            const Chart = {
+                init: function () {
+                    var selectedOption = $('#options').val();
+                    console.log(selectedOption);
+                    $.ajax({
+                        url: '/report/graph/generate_graph',  // 更改为指向您的 graph_index 视图的 URL
+                        method: 'POST',
+                        data: {
+                            'options': selectedOption,
+                            'csrfmiddlewaretoken': '{{ csrf_token }}'
+                        },
+                        success: function (data) {
+                            $('#chart').html(data.chart);
+                        },
+                        error: function (xhr, status, error) {
+                            console.error('Error fetching new data:', error);
+                        }
+                    });
 
-            $('#generateGraph').on('click', function () {
-                $.ajax({
-                    url: `/report/graph/generate_graph`,
-                    method: 'GET',
-                    {#data: {task_type: 'word_split', task_params: ''},#}
-                    success: function () {
-                        console.log('success')
-                        {#console.log(data)#}
+                }
+            };
+            const EventHandlers = {
+                graphOptionsChange: function () {
+                    $('#options').on('change', function () {
+                        Chart.init();
+                    });
+                },
+            };
 
-                    },
-                    error: function (xhr, status, error) {
-                        console.error('Error:', error);
-                    }
-                });
+            $(document).ready(function () {
+                Chart.init();
+                EventHandlers.graphOptionsChange();
             });
-        })
+        })();
     </script>
 {% endblock %}
+
 
