@@ -29,6 +29,20 @@ logger = logging.getLogger('django')
 
 
 class TouTiaoContent:
+    """
+    一个根据指定关键词抓取今日头条（中国新闻平台）文章的类。
+    属性:
+        root_path (str): 保存输出文件的根路径。
+        driver_path (str): selenium webdriver的路径。
+        area_keyword (str): 搜索的区域关键词，会以今日头条+area_keyword命名保存xlsx文件。
+        *args: 其他搜索关键词。
+    方法:
+        append_to_worksheet(data): 将提取的文章数据附加到工作表。
+        extract_article_info(url): 从文章的URL中提取相关信息。
+        toutiao_spider(): 开始网络抓取过程的主要方法。
+        parse_time_str(time_str): 将时间字符串转换为pd.Timestamp对象。
+        judge_exist(search_content): 检查页面上是否存在元素，如有必要进行刷新。
+    """
     def __init__(self, root_path="", driver_path="", area_keyword="", *args):
         self._start_date = pd.to_datetime(datetime.now())  # TODO 读取最新日期
         self._area_keyword = area_keyword
