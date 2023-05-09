@@ -13,3 +13,6 @@ selenium~=4.9.0
 concurrent-log-handler~=0.9.19
 celery~=5.2.7
 gevent~=22.10.2
+flower~=1.2.0
+pyecharts~=2.0.3
+kombu~=5.2.4
