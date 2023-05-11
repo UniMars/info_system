@@ -77,7 +77,7 @@ def upload_file(request, data_id):
         return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
 
 
-@cache_page(7200)
+@cache_page(72000)
 def table_update(request, data_id):
     data = {'update': False}
     if data_id == 1:
@@ -89,12 +89,13 @@ def table_update(request, data_id):
             '4': "level",
             '5': "title",
         }
+        # cache.clear()
         queryset = cache.get('gov_doc_total')
         doc = GovDoc
         cache_key = 'gov_doc_total'
     elif data_id == 2:
+        queryset = cache.get('weibo_doc_total')
         order_column_dict = {}
-        queryset = cache.get('gov_doc_total')
         doc = WeiboDoc
         cache_key = 'weibo_doc_total'
     elif data_id == 3:
@@ -120,8 +121,11 @@ def table_update(request, data_id):
         order_column_str = order_column_dict[order_column]
         # search_value = request.GET.get('search[value]', '')
         if not queryset:
-            queryset = doc.objects.all().order_by('-pub_date')[:1000]
+            # print("Queryset not in cache, get from database")
+            queryset = doc.objects.all().order_by('-pub_date')[:100]
+            print(f"Queryset length: {len(queryset)}")
             cache.set(cache_key, queryset, 7200)
+        print(f"Queryset length: {len(queryset)}")
         sorted_queryset = sorted(queryset, key=lambda x: getattr(x, order_column_str),
                                  reverse=True if order_direction == 'desc' else False)
         total_records = len(sorted_queryset)
@@ -150,7 +154,7 @@ def table_update(request, data_id):
         return JsonResponse(data, safe=False)
 
 
-@cache_page(7200)
+@cache_page(72000)
 def wordcloud(request, data_id):
     if data_id != 1:
         return JsonResponse({'word_freq': [{'name': '@TEST@', 'value': 1}]})
@@ -175,10 +179,10 @@ def wordcloud(request, data_id):
                      {'id': '48', 'name': '青岛'}, {'id': '49', 'name': '青海'}, {'id': '50', 'name': '黑龙江'}]
         area_dict = {item['id']: item['name'] for item in area_list}
         area_id = request.GET.get('region_id')
-        print("\n---\nareaid:", area_id)
-        print(area_id in area_dict)
+        # print("\n---\nareaid:", area_id)
+        # print(area_id in area_dict)
         if area_id in area_dict:
-            print(area_dict[area_id])
+            # print(area_dict[area_id])
             search_area = area_dict[area_id]
         else:
             return JsonResponse({'word_freq': [{'name': '@TEST@', 'value': 1}]})

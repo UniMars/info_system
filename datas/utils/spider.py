@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-from datetime import datetime, timedelta
 import json
 import logging
 import os.path
@@ -8,6 +7,7 @@ import re
 import time
 import traceback
 import urllib
+from datetime import datetime, timedelta
 from urllib import request as urllib2
 from urllib.parse import quote
 
@@ -15,15 +15,14 @@ import openpyxl as op
 import pandas as pd
 import xlwt
 from bs4 import BeautifulSoup
+from django.conf import settings
 from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
 from openpyxl.utils.exceptions import IllegalCharacterError
 from selenium import webdriver
 from selenium.common import TimeoutException
 from selenium.webdriver.common.by import By
-
-from django.conf import settings
-from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.wait import WebDriverWait
 
 logger = logging.getLogger('django')
 
@@ -43,11 +42,13 @@ class TouTiaoContent:
         parse_time_str(time_str): 将时间字符串转换为pd.Timestamp对象。
         judge_exist(search_content): 检查页面上是否存在元素，如有必要进行刷新。
     """
-    def __init__(self, root_path="", driver_path="", area_keyword="", *args):
+
+    def __init__(self, root_path="", driver_path="", area_keyword="", search_args=None):
         self._start_date = pd.to_datetime(datetime.now())  # TODO 读取最新日期
         self._area_keyword = area_keyword
-        self._search_keywords = args
-        self._search_keyword = ' '.join([str(i) for i in args])
+        search_args = search_args if search_args else []
+        self._search_keywords = search_args
+        self._search_keyword = ' '.join([str(i) for i in search_args])
         if self._area_keyword:
             self._search_keyword = f'{self._area_keyword} {self._search_keyword}'
         file_name = f'今日头条+{area_keyword}.xlsx'
