@@ -2,7 +2,7 @@
 {#{% load static %}#}
 {% block title %}信息系统首页{% endblock %}
 {% block head %}
-
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 {% endblock %}
 {% block navbar %}
     {% include 'template/navbar.html' with active=0 %}
@@ -13,7 +13,7 @@
         <header class="bg-secondary text-white text-center py-3 mb-4">
             <h1>区域数字经济发展指数</h1>
             <h2><span id="current-time">当前时间</span></h2> <!-- 添加用于显示实时时间的span元素 -->
-            <h2><span id="">已收录数据 19300条</span></h2>
+            <h2><span id="doc-sum">已收录数据 条</span></h2>
         </header>
 
         <div class="container">
@@ -92,27 +92,59 @@
 
 {% block script %}
     <script>
-        function updateCurrentTime() {
-            let currentTime = new Date();
-            let years = currentTime.getFullYear();
-            let month = currentTime.getMonth();
-            let day = currentTime.getDay();
-            let hours = currentTime.getHours();
-            let minutes = currentTime.getMinutes();
-            let seconds = currentTime.getSeconds();
+        (function () {
+            const DataFetcher = {
+                getDocSum: async function () {
+                    try {
+                        // 使用Promise将$.ajax请求包装起来
+                        return await new Promise((resolve, reject) => {
+                            $.ajax({
+                                url: `/getDocSum`,
+                                method: 'GET',
+                                success: function (data) {
+                                    {#console.log('wordHotness success');#}
+                                    {#console.log(data);#}
+                                    resolve(data['DocSum']); // 在成功回调中使用resolve函数
+                                },
+                                error: function (xhr, status, error) {
+                                    console.error('Error:', error);
+                                    reject(error); // 在错误回调中使用reject函数
+                                }
+                            });
+                        });
+                    } catch (error) {
+                        console.error("Error:", error);
+                        return {}; // 返回一个空对象作为错误情况下的结果
+                    }
+                },
+            };
 
-            // 为小时、分钟和秒添加前导零（如果需要）
-            month = (month < 10) ? '0' + month : month;
-            day = (day < 10) ? '0' + day : day;
-            hours = (hours < 10) ? '0' + hours : hours;
-            minutes = (minutes < 10) ? '0' + minutes : minutes;
-            seconds = (seconds < 10) ? '0' + seconds : seconds;
+            const updateCurrentTime = () => {
+                let currentTime = new Date();
+                let years = currentTime.getFullYear();
+                let month = currentTime.getMonth();
+                let day = currentTime.getDay();
+                let hours = currentTime.getHours();
+                let minutes = currentTime.getMinutes();
+                let seconds = currentTime.getSeconds();
 
-            document.getElementById('current-time').innerHTML = "当前时间   " + years + "年" + month + "月" + day + "日  " + hours + ':' + minutes + ':' + seconds;
-        }
+                // 为小时、分钟和秒添加前导零（如果需要）
+                month = (month < 10) ? '0' + month : month;
+                day = (day < 10) ? '0' + day : day;
+                hours = (hours < 10) ? '0' + hours : hours;
+                minutes = (minutes < 10) ? '0' + minutes : minutes;
+                seconds = (seconds < 10) ? '0' + seconds : seconds;
 
-        // 每秒更新一次时间
-        setInterval(updateCurrentTime, 1000);
+                document.getElementById('current-time').innerHTML = "当前时间   " + years + "年" + month + "月" + day + "日  " + hours + ':' + minutes + ':' + seconds;
+            }
+
+            // 每秒更新一次时间
+            $(document).ready(async function () {
+                setInterval(updateCurrentTime, 1000);
+                let docSum = await DataFetcher.getDocSum();
+                document.getElementById('doc-sum').innerHTML = "已收录数据 " + docSum + "条";
+            });
+        })();
     </script>
 {% endblock %}
 

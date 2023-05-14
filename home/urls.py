@@ -4,5 +4,5 @@ from . import views
 
 urlpatterns = [
     path('', views.home, name='home'),
-    path('current_time', views.current_time)
+    path('getDocSum', views.get_doc_sum, name='get_doc_sum'),
 ]
