@@ -20,8 +20,9 @@
     <div class="tab-pane fade show active" id="v-pills-form" role="tabpanel"
          aria-labelledby="v-pills-form-tab" style="width: 100% ;height: 100%">
         <button class="btn btn-primary mb-3" id="importData">导入数据</button>
-        {#        <button class="btn btn-primary mb-3" id="updateTable">开始分词</button>#}
-        {#        <button class="btn btn-primary mb-3" id="wordSplit">分词统计</button>#}
+        <button class="btn btn-primary mb-3" id="wordSplit">分词统计</button>
+        <button class="btn btn-primary mb-3" id="spider" data-bs-toggle="modal" data-bs-target="#spiderModal">开始爬虫
+        </button>
         <br>
         <h1 align="center">
 
@@ -48,6 +49,25 @@
             </div>
         </div>
     </div>
+    <!-- 模态框（Modal） -->
+    <div class="modal fade" id="spiderModal" tabindex="-1" role="dialog" aria-labelledby="spiderModalLabel"
+         aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4 class="modal-title mb-0" id="spiderModalLabel">提示</h4>
+                    <button type="button" class="btn-close ms-auto" data-bs-dismiss="modal" aria-hidden="true"></button>
+                </div>
+                <div class="modal-body">
+                    由于实验室对于爬虫的限制，暂时无法使用
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-bs-dismiss="modal">关闭</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
 {% endblock %}
 {% block javascript %}
     <script>
@@ -94,8 +114,7 @@
                             {'title': "来源", 'data': "来源"},
                             {'title': "标题", 'data': "标题"},
                         ]
-                    }
-                    else {
+                    } else {
                         console.log('error Datatype')
                     }
                     return $('#myTable').DataTable(this.config);
@@ -189,7 +208,23 @@
                 },
                 wordSplitButtonClick: function (datatype) {
                     $('#wordSplit').on('click', function () {
-                        // ... (original wordSplit click event handler)
+                        console.log('word_split start')
+                        $.ajax({
+                            url: `/datas/${datatype}/handle_task`,
+                            method: 'GET',
+                            data: {
+                                task_type: "word_split",
+                                task_params: JSON.stringify({
+                                    data_type: datatype
+                                })
+                            },
+                            success: function (data) {
+                                console.log('wordSplit success')
+                            },
+                            error: function (xhr, status, error) {
+                                console.error('Error fetching new data:', error);
+                            }
+                        });
                     });
                 },
                 test2ButtonClick: function (datatype) {
@@ -206,8 +241,9 @@
                 UpLoadPanel.init({{datatype}})
                 EventHandlers.tableHeaderClick(table);
                 EventHandlers.importDataButtonClick();
+                EventHandlers.wordSplitButtonClick({{datatype}});
+
                 {#EventHandlers.updateTableButtonClick({{datatype}}, table);#}
-                {#EventHandlers.wordSplitButtonClick({{datatype}});#}
                 {#const UpLoad = new UpLoad();#}
             });
         })();
