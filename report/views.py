@@ -39,8 +39,7 @@ def generate_graph(request):
         # 调用画图函数，传递参数
         overlap_bar_line = draw_bar_line(file_path=file_path, name_list=name_list, page_number=page_number)
         overlap_radar = draw_radar(file_path=file_path, name_list=name_list, page_number=page_number)
-        overlap_geo_heatmap = draw_geo_heatmap(file_path=file_path, name_list=name_list,
-                                               page_number=page_number)
+        overlap_geo_heatmap = draw_geo_heatmap(file_path=file_path, name_list=name_list, page_number=page_number)
 
         # 多张图表分页
         tab = Tab()
@@ -49,6 +48,12 @@ def generate_graph(request):
         tab.add(overlap_geo_heatmap, "全国{}GEO热力图".format(name_list[-1]))
 
         chart_html = tab.render_embed()
+        chart_html = chart_html.replace(
+            """<script type="text/javascript" src="https://assets.pyecharts.org/assets/v5/echarts.min.js"></script>""",
+            "")
+        chart_html = chart_html.replace(
+            """<script type="text/javascript" src="https://assets.pyecharts.org/assets/v5/maps/china.js"></script>""",
+            "")
         # 将图表渲染为HTML模板，然后返回给用户的浏览器
         return JsonResponse({'chart': chart_html})
     else:

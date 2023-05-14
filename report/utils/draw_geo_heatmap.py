@@ -1,6 +1,7 @@
 # _*_ coding :utf-8 _*_
 # @Time : 2023/4/25 14:58
 # @Author ：李文杰
+from django.core.cache import cache
 from pyecharts import options as opts
 # 导入必要的库
 from pyecharts.charts import Geo
@@ -18,7 +19,11 @@ def draw_geo_heatmap(file_path, name_list, page_number=0):
        """
 
     # 读取数据
-    df = read_file_to_dataframe(file_path, page_number)
+    df = cache.get(f'index_{page_number}_df')
+    print(df)
+    if df is None:
+        df = read_file_to_dataframe(file_path, page_number)
+        cache.set(f'index_{page_number}_df', df, timeout=7200)
     df = df[name_list]
 
     # 构造（"地区"，"指数"）列表
@@ -50,8 +55,7 @@ def draw_geo_heatmap(file_path, name_list, page_number=0):
     geo.add_schema(maptype="china")
 
     # 数据点为热力图模式
-    geo.add("", para_list,
-            type_='heatmap')
+    geo.add("", para_list, type_='heatmap')
 
     # 热点图必须配置visualmap_opts
     geo.set_global_opts(visualmap_opts=opts.VisualMapOpts(pos_top="middle"),
