@@ -52,7 +52,7 @@
     {#    </form>#}
     <div id="chart" style="width:1000px; padding: 10px;
         height:650px; margin: auto  ">
-        {{ chart|safe }}
+        {#{{ chart|safe }}#}
     </div>
 {% endblock %}
 
@@ -71,7 +71,7 @@
                             'csrfmiddlewaretoken': '{{ csrf_token }}'
                         },
                         success: function (data) {
-                            console.log(data.chart);
+                            {#console.log(data.chart);#}
                             $('#chart').empty().html(data.chart);
                         },
                         error: function (xhr, status, error) {

@@ -20,7 +20,6 @@ def draw_geo_heatmap(file_path, name_list, page_number=0):
 
     # 读取数据
     df = cache.get(f'index_{page_number}_df')
-    print(df)
     if df is None:
         df = read_file_to_dataframe(file_path, page_number)
         cache.set(f'index_{page_number}_df', df, timeout=7200)
