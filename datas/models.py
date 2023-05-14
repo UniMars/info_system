@@ -82,7 +82,7 @@ class Operations(models.Model):
 
 
 class WordHotness(models.Model):
-    datetype = models.ForeignKey(DataType, on_delete=models.CASCADE)
+    datatype = models.ForeignKey(DataType, on_delete=models.CASCADE)
     word = models.CharField(max_length=500)
     year = models.IntegerField()
     freq = models.IntegerField(default=0)
@@ -91,7 +91,7 @@ class WordHotness(models.Model):
         app_label = 'datas'  # 应用程序名称
 
     def __str__(self):
-        return f"{self.datetype}.{self.word}.{self.year}"
+        return f"{self.datatype}.{self.word}.{self.year}"
 
 
 class GovDoc(models.Model):

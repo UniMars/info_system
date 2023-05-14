@@ -62,8 +62,7 @@
             };
 
             const HotnessLineChart = {
-                init: function () {
-                    'use strict'
+                init: function (freq_dict = {}) {
                     feather.replace({'aria-hidden': 'true'})
                     this.chart = echarts.init(document.getElementById('hotness'), null, {
                         width: 'auto',
@@ -91,25 +90,31 @@
                             }
                         ]
                     };
-                    this.freq_dict = {};
+                    this.freq_dict = freq_dict;
                     this.chart.setOption(this.options);
                 },
                 setOptions: function (options) {
                     this.options = options;
                     this.chart.setOption(this.options);
                 },
-
-                update: function (key_word = "发展", freq_dict = {}) {
+                setData: function (freq_dict) {
                     if (!Object.keys(freq_dict).length) {
                         {#console.log('yes')#}
                         freq_dict = this.freq_dict
                     } else {
                         this.freq_dict = freq_dict
                     }
+                },
+                update: function (key_word = "") {
+                    freq_dict = this.freq_dict
+                    fisrt_word = Object.keys(freq_dict)[0];
+                    if (!key_word) {
+                        key_word = fisrt_word
+                    }
                     {#console.log(key_word)#}
                     {#console.log(!Object.keys(freq_dict).length)#}
                     {#console.log(freq_dict)#}
-                    let item = freq_dict[key_word]
+                    let item = freq_dict[key_word];
                     let keys = Object.keys(item);
                     let values = Object.values(item);
                     this.options.title.text = `热词：${key_word}`;
@@ -121,7 +126,7 @@
 
                 switchItem: function (item) {
                     {#const data = await DataFetcher.fetchWordFrequencyData({{datatype}}, item);#}
-                    this.update(item, {});
+                    this.update(item);
 
                 }
             };
@@ -149,8 +154,8 @@
                 const graphData = await DataFetcher.getWordHotness({{datatype}});
                 {#console.log("graph data")#}
                 {#console.log(graphData)#}
-                HotnessLineChart.init();
-                HotnessLineChart.update('发展', graphData);
+                HotnessLineChart.init(graphData);
+                HotnessLineChart.update();
                 const wordList = Object.keys(graphData);
                 const dropdownListData = [];
                 for (let i = 0; i < wordList.length; i++) {

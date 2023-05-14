@@ -12,9 +12,9 @@ from typing import Union
 import jieba
 from celery import shared_task
 from django.conf import settings
-from django.core.cache import cache
 from django.db import transaction, connections
-from django.db.models import Sum
+from django.db.models import Sum, ForeignKey, Q
+from django.db.models.expressions import RawSQL
 
 from datas.models import GovDoc, GovDocWordFreq, ToutiaoDoc, WordHotness, ToutiaoDocWordFreq, ToutiaoDocWordFreqAggr, \
     GovDocWordFreqAggr
@@ -83,7 +83,7 @@ def gov_data_import(filepath: str = ""):
         logging.error(f"ERROR:{e}")
         return "error"
     finally:
-        word_split(GovDoc, GovDocWordFreq, GovDocWordFreqAggr)
+        word_split(1)
 
 
 @shared_task
@@ -156,7 +156,7 @@ def toutiao_data_import(rootpath: str = ""):
         logging.error(f"ERROR:{e}")
         return "error"
     finally:
-        word_split(ToutiaoDoc, ToutiaoDocWordFreq, ToutiaoDocWordFreqAggr)
+        word_split(3)
 
 
 # 使用chunked方法分批获取数据库记录，避免一次性加载大量数据占用内存
@@ -166,7 +166,19 @@ def toutiao_data_import(rootpath: str = ""):
 # 使用列表解析器：列表解析器可以用更少的代码完成列表的创建，而且在某些情况下，列表解析器比for循环更快。
 # 使用内存映射文件：内存映射文件可以将大型文件映射到虚拟内存中。这样，可以像操作常规数组一样操作文件中的数据，而不必将整个文件读入内存。
 @shared_task
-def word_split(doc, word_freq, word_freq_aggr):
+def word_split(data_type):
+    # logger.debug("hello world------")
+    if data_type == 1:
+        doc = GovDoc
+        word_freq = GovDocWordFreq
+    elif data_type == 2:
+        return
+    elif data_type == 3:
+        doc = ToutiaoDoc
+        word_freq = ToutiaoDocWordFreq
+    else:
+        logger.error('wrong data_type')
+        return
     doc_str = doc.__name__
     logger.info(f"start {doc_str} word splitting")
     cpu_count = multiprocessing.cpu_count() * 2 if multiprocessing.cpu_count() < 17 else 32
@@ -185,94 +197,45 @@ def word_split(doc, word_freq, word_freq_aggr):
 
         # 加载停用词
         stopwords, stop_pattern = get_stopwords()
-
+        output_file = os.path.join(settings.BASE_DIR, 'logs', 'wrong_result.txt')
         articles = doc.objects.filter(is_split=False)
         article_count = articles.count()
-        chunk_size = article_count // cpu_count + 1
-        chunks = [articles[i:i + chunk_size].iterator() for i in range(0, article_count, chunk_size)]
+        if article_count != 0:
+            # logger.info("----------All Thread finished----------")
+            # word_freq_sum(data_type=data_type,cpu_count=cpu_count,output_file=output_file)
+            # return "分词结束"
+            chunk_size = article_count // cpu_count + 1
+            chunks = [articles[i:i + chunk_size].iterator() for i in range(0, article_count, chunk_size)]
 
-        thread = 0
-        for chunk in chunks:
-            logger.debug(f"WORKER {thread} start")
-            params = {
-                'model_list_iterator': chunk,
-                'doc_word_freq_model': word_freq,
-                'tokenizer': tokenizer,
-                'stopwords': stopwords,
-                'stop_pattern': stop_pattern,
-                'worker': thread
-            }
-            future = executor.submit(word_split_multiprocess_task, **params)
-            futures.append(future)
-            futures_dict[str(thread)] = future
-            thread += 1
+            thread = 0
+            for chunk in chunks:
+                logger.debug(f"WORKER {thread} start")
+                params = {
+                    'model_list_iterator': chunk,
+                    'doc_word_freq_model': word_freq,
+                    'tokenizer': tokenizer,
+                    'stopwords': stopwords,
+                    'stop_pattern': stop_pattern,
+                    'worker': thread
+                }
+                future = executor.submit(word_split_multiprocess_task, **params)
+                futures.append(future)
+                futures_dict[str(thread)] = future
+                thread += 1
 
-        # results = []
-        # 等待所有线程完成
-        output_file = os.path.join(settings.BASE_DIR, 'logs', 'wrong_result.txt')
-        for future in concurrent.futures.as_completed(futures):
-            for key, values in futures_dict.items():
-                if values == future:
-                    logger.debug(f"WORKER {key} finish")
-                    break
-            word_total_models = future.result()
-            read_uids = read_wrong_result(output_file)
-            word_total_models.extend(read_uids)
-
-            # 将uid按每批1000个进行划分
-            batch_size = 10000
-            uid_batches = [word_total_models[i:i + batch_size] for i in range(0, len(word_total_models), batch_size)]
-            failed_uids = []  # 记录更新失败的uid
-            for uid_batch in uid_batches:
-                word_aggr_updates = defaultdict(lambda: defaultdict(int))
-                try:
-                    for uid in uid_batch:
-                        model = word_freq.objects.get(id=uid)
-                        word, freq, record_id = model.word, model.freq, model.record_id
-                        # 尝试从缓存获取area值
-                        cache_key = f'{doc_str}_area_{record_id}'
-                        area = cache.get(cache_key)
-                        if area is None:
-                            area = doc.objects.get(pk=record_id).area
-                            cache.set(cache_key, doc.area, 60 * 60 * 24 * 2)
-                        # area = doc.objects.get(id=record_id).area
-                        word_aggr_updates[word][area] += freq
-                        word_aggr_updates[word]['TOTAL'] += freq
-                    # Prepare the list of objects to be updated
-                    update_list = []
-                    for word, freq_dict in word_aggr_updates.items():
-                        for area, freq in freq_dict.items():
-                            aggr_obj, created = word_freq_aggr.objects.get_or_create(word=word,
-                                                                                     area=area,
-                                                                                     defaults={'freq': 0})
-                            aggr_obj.freq += freq_dict[area]
-                            update_list.append(aggr_obj)
-                except Exception as e:
-                    logger.error(f"WordFreqAggr Updating:{e}")
-                    failed_uids.extend(uid_batch)
-                    continue
-                else:
-                    max_retries = cpu_count * 2 if cpu_count < 25 else 50
-                    for retries in range(max_retries):
-                        # Perform the bulk update
-                        with transaction.atomic():
-                            try:
-                                word_freq_aggr.objects.bulk_update(update_list, ['freq'])
-                            except Exception as e:
-                                transaction.set_rollback(True)
-                                if retries == max_retries - 1:
-                                    failed_uids.extend(uid_batch)
-                                    logger.error(f"WordFreqAggr Updating:{e}")
-                                    break
-                            else:
-                                logger.debug("WordFreqAggr Updated")
-                                break
-                            # 更新失败，将失败的uid记录下来
-                # 将更新失败的uid写入到result.txt中
-            if failed_uids:
-                with open(file=output_file, mode='a', encoding='utf-8') as f:
-                    f.write('\n'.join(str(uid) for uid in failed_uids))
+            # results = []
+            # 等待所有线程完成
+            for future in concurrent.futures.as_completed(futures):
+                for key, values in futures_dict.items():
+                    if values == future:
+                        logger.debug(f"WORKER {key} finish")
+                        break
+                word_total_models = future.result()
+                read_uids = read_wrong_result(output_file)
+                word_total_models.extend(read_uids)
         logger.info("----------All Thread finished----------")
+        # word_freq_sum(data_type=data_type,cpu_count=cpu_count,output_file=output_file)
+        freq_aggr_sum(data_type=data_type)
         return "分词结束"
 
 
@@ -294,11 +257,18 @@ def word_split_multiprocess_task(model_list_iterator,
 
     word_total_models = []
     gc_count = 0
-    time1 = time.time()
-    try:
-        for article in model_list_iterator:
+    time1 = time.perf_counter()
+    for article in model_list_iterator:
+        # jieba_time_count = 0
+        search_time_count = 0
+        bulk_time_count = 0
+        # bulk_create_count = 0
+        # bulk_update_count = 0
+        try:
             # 分词并词频统计
             word_freq = defaultdict(int)
+            unique_uids = set()
+            # jieba_time1=time.perf_counter()
             for word in tokenizer.cut(article.content):
                 # 去除停用词和数字,标点符号,并转换为小写
                 if word in stopwords or stop_pattern.search(word):
@@ -306,46 +276,180 @@ def word_split_multiprocess_task(model_list_iterator,
                 word = word if not word.isalpha() else word.lower()
                 # 词频统计
                 word_freq[word] += 1
+            # jieba_time2=time.perf_counter()
+            # jieba_time_count+=jieba_time2-jieba_time1
 
+            search_time1 = time.perf_counter()
             # 保存词频统计结果写入数据表
             word_model_list = []
             for word, freq in word_freq.items():
                 uid = generate_id(word, article.id)
+                if uid in unique_uids:
+                    continue
                 if doc_word_freq_model.objects.filter(id=uid).exists():
                     continue
                 else:
                     word_model_list.append(
-                        doc_word_freq_model(id=uid, word=word, freq=freq, record=article, pub_date=article.pub_date))
+                        doc_word_freq_model(id=uid, word=word, freq=freq, record_id=article.id,
+                                            pub_date=article.pub_date))
                     word_total_models.append(uid)
+                    unique_uids.add(uid)
+            search_time2 = time.perf_counter()
+            search_time_count += search_time2 - search_time1
 
+            bulk_time1 = time.perf_counter()
             with transaction.atomic():
                 if word_model_list:
+                    # bulk_create_time1=time.perf_counter()
                     doc_word_freq_model.objects.bulk_create(word_model_list)
+                    # bulk_create_time2=time.perf_counter()
+                    # bulk_create_count+=bulk_create_time2-bulk_create_time1
+                # bulk_create_time3=time.perf_counter()
                 article.is_split = True
                 article.save(update_fields=['is_split'])
+                # bulk_create_time4=time.perf_counter()
+                # bulk_update_count+=bulk_create_time4-bulk_create_time3
                 logger.debug(f"article:{article.id} save success with WORKER:{worker}")
             del word_model_list
             del word_freq
-    except Exception as e:
-        logger.error(f"bulk transaction error:{e} with WORKER:{worker}")
-    finally:
-        gc_count += 1
-        if gc_count == 500:
-            gc_count = 0
-            gc.collect()
-            # 销毁word_model_list
-        time2 = time.time()
-        logger.debug(f"WORKER:{worker} cost {time2 - time1}")
+            bulk_time2 = time.perf_counter()
+            bulk_time_count += bulk_time2 - bulk_time1
+        except Exception as e:
+            logger.error(f"bulk transaction error:{e} with WORKER:{worker}")
+        finally:
+            # logger.debug(f"----------------------------------------")
+            logger.debug(
+                f"Worker {worker} Article {article.id}:\nsearch cost {search_time_count:.4f}s\nbulk cost {bulk_time_count:.4f}s")
+            # logger.debug(f"Worker {worker} Article {article.id}:\nbulk_create cost{bulk_create_count}s\nupdate cost{bulk_update_count}s")
+            # logger.debug(f"----------------------------------------")
+            gc_count += 1
+            if gc_count == 500:
+                gc_count = 0
+                gc.collect()
+                # 销毁word_model_list
+    time2 = time.perf_counter()
+    logger.debug(f"WORKER:{worker} cost {int(time2 - time1)}s")
     return word_total_models
+
+
+def bulk_update_or_create(word_freqs, freq_aggr_model, batch_size=10000, area_key=""):
+    logger.info(f"bulk_update_or_create {freq_aggr_model} start")
+    # 聚合所有区域的词频总和
+    to_update = []
+    to_create = []
+    count_update = 1
+    count_create = 1
+    # word_freq_count=word_freqs.count()
+    total_count = 0
+    # 更新 freq_aggr_model 表
+    for word_freq in word_freqs:
+        area = word_freq['record__area'] if area_key == "" else area_key
+        word = word_freq['word']
+        total_freq = word_freq['total_freq']
+
+        # 查询 freq_aggr_model 中是否存在相应的记录
+        area_word_freq_obj = freq_aggr_model.objects.filter(area=area,
+                                                            word=word).first()
+
+        # 如果记录存在，则更新；否则，创建新记录
+        if area_word_freq_obj:
+            if area_word_freq_obj.freq == total_freq:
+                continue
+            area_word_freq_obj.freq = total_freq
+            to_update.append(area_word_freq_obj)
+            count_update += 1
+        else:
+            area_word_freq_obj = freq_aggr_model(area=area,
+                                                 word=word,
+                                                 freq=total_freq)
+            to_create.append(area_word_freq_obj)
+            count_create += 1
+
+        # 执行bulk操作
+        if count_update % batch_size == 0:
+            total_count += batch_size
+            logger.info(f"to_update: {total_count}")
+            freq_aggr_model.objects.bulk_update(to_update, ['freq'])
+            count_update = 1
+            to_update = []
+            gc.collect()
+        if count_create % 10000 == 0:
+            total_count += batch_size
+            logger.info(f"to_create: {total_count}")
+            freq_aggr_model.objects.bulk_create(to_create)
+            count_create = 1
+            to_create = []
+            gc.collect()
+    if to_update:
+        logger.info(f"finally to_update: {count_update}")
+        freq_aggr_model.objects.bulk_update(to_update, ['freq'])
+    if to_create:
+        logger.info(f"finally to_create: {count_create}")
+        freq_aggr_model.objects.bulk_create(to_create)
+    logger.info("Bulk update Done!")
+
+
+def freq_aggr_sum(data_type=0, start_time=None):
+    if data_type == 1:
+        doc_str = "GovDoc"
+        doc = GovDoc
+        word_freq = GovDocWordFreq
+        word_freq_aggr = GovDocWordFreqAggr
+    elif data_type == 2:
+        return
+    elif data_type == 3:
+        doc_str = "ToutiaoDoc"
+        doc = ToutiaoDoc
+        word_freq = ToutiaoDocWordFreq
+        word_freq_aggr = ToutiaoDocWordFreqAggr
+    else:
+        logger.error('wrong data_type')
+        return
+    logger.info(f'{doc_str} freq sum start')
+    fks = [i for i in word_freq._meta.fields if i.name == "record_id" and isinstance(i, ForeignKey)]
+    if fks:
+        # 筛选发布时间大于指定日期的记录
+        if start_time:
+            area_word_freqs = word_freq.objects.filter(
+                pub_date__gt=start_time).values(
+                'record_id__area', 'word').annotate(total_freq=Sum('freq')).iterator()
+        else:
+            area_word_freqs = word_freq.objects.values(
+                'record_id__area', 'word').annotate(total_freq=Sum('freq')).iterator()
+    else:
+        rawsql = RawSQL(
+            f"""SELECT area FROM `{doc._meta.db_table}` WHERE id = `{word_freq._meta.db_table}`.record_id""",
+            ())
+        if start_time:
+            area_word_freqs = word_freq.objects.filter(
+                pub_date__gt=start_time).annotate(record__area=rawsql).values(
+                "record__area", "word").annotate(total_freq=Sum("freq")).iterator()
+        else:
+            area_word_freqs = word_freq.objects.all().annotate(
+                record__area=rawsql).values(
+                "record__area",
+                "word").annotate(total_freq=Sum("freq")).iterator()
+
+    bulk_update_or_create(area_word_freqs, word_freq_aggr)
+
+    total_word_freqs = word_freq_aggr.objects.filter(~Q(area='TOTAL')).values('word').annotate(
+        total_freq=Sum('freq')).iterator()
+    bulk_update_or_create(total_word_freqs, word_freq_aggr, area_key="TOTAL")
+    generate_hotness(data_type=data_type)
 
 
 @shared_task
 def generate_hotness(data_type: int = 1):
     if data_type == 1:
-        hot_list = ['发展', '建设', '经济', '企业', '数字', '新', '产业', '创新', '工作', '推进', ]
         wordfreq = GovDocWordFreq
+        wordfreq_aggr = GovDocWordFreqAggr
+    elif data_type == 3:
+        wordfreq = ToutiaoDocWordFreq
+        wordfreq_aggr = ToutiaoDocWordFreqAggr
     else:
         return None
+    top_10_records = wordfreq_aggr.objects.filter(area='TOTAL').order_by('-freq')[:10].iterator()
+    hot_list = [i.word for i in top_10_records]
     end_year = datetime.datetime.now().year
     start_year = end_year - 10
 
@@ -354,14 +458,15 @@ def generate_hotness(data_type: int = 1):
         end_date = datetime.datetime(year + 1, 1, 1) - datetime.timedelta(days=1)
 
         yearly_word_freqs = (
-            wordfreq.objects.filter(word__in=hot_list, area="TOTAL", pub_date__range=(start_date, end_date))
+            wordfreq.objects.filter(word__in=hot_list, pub_date__range=(start_date, end_date))
             .values('word').annotate(yearly_freq=Sum('freq')))
 
         with transaction.atomic():
             for item in yearly_word_freqs:
                 word = item['word']
                 yearly_freq = item['yearly_freq']
-                yearly_word_freq, created = WordHotness.objects.get_or_create(word=word, year=year)
+                yearly_word_freq, created = WordHotness.objects.get_or_create(word=word, year=year,
+                                                                              datatype_id=data_type)
                 yearly_word_freq.freq = yearly_freq
                 yearly_word_freq.save()
         print(f"year{year} done!")
