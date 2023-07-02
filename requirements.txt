@@ -16,3 +16,4 @@ gevent~=22.10.2
 flower~=1.2.0
 pyecharts~=2.0.3
 kombu~=5.2.4
+requests~=2.31.0
